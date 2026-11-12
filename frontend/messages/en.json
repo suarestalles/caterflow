@@ -1,0 +1,52 @@
+
+{
+  "Navigation": {
+    "workspace": "Workspace",
+    "dashboard": "Dashboard",
+    "events": "Events",
+    "quotes": "Quotes",
+    "clients": "Clients",
+    "menus": "Menus",
+    "finances": "Finances",
+    "settings": "Settings"
+  },
+  "Header": {
+    "title": "Overview",
+    "description": "Keep track of your catering operations.",
+    "company": "My company",
+    "administrator": "Administrator",
+    "search": "Search",
+    "notifications": "Notifications"
+  },
+  "Dashboard": {
+    "title": "Dashboard",
+    "welcome": "Welcome to CaterFlow. Here's an overview of your operation.",
+    "eventsThisMonth": "Events this month",
+    "upcomingEvents": "4 events in the next 7 days",
+    "pendingQuotes": "Pending quotes",
+    "awaitingApproval": "Waiting for client approval",
+    "expectedRevenue": "Expected revenue",
+    "confirmedEvents": "From confirmed events",
+    "activeClients": "Active clients",
+    "registeredClients": "Clients registered on the platform",
+    "nextEvents": "Upcoming events",
+    "scheduledEvents": "Keep track of scheduled events.",
+    "viewAll": "View all",
+    "recentActivity": "Recent activity",
+    "latestUpdates": "Latest operational updates",
+    "corporateEvent": "Corporate event",
+    "birthday": "Birthday",
+    "coffeeBreak": "Coffee break",
+    "confirmed": "Confirmed",
+    "preparing": "Preparing",
+    "quoteCreated": "New quote created",
+    "corporateQuote": "Quote for corporate event",
+    "eventConfirmed": "Event confirmed",
+    "mariasBirthday": "María González's birthday",
+    "clientRegistered": "New client registered",
+    "companyXYZ": "Company XYZ",
+    "twentyMinutesAgo": "20 minutes ago",
+    "twoHoursAgo": "2 hours ago",
+    "yesterday": "Yesterday"
+  }
+}

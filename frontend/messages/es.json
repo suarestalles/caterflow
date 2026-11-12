@@ -1,0 +1,52 @@
+
+{
+  "Navigation": {
+    "workspace": "Espacio de trabajo",
+    "dashboard": "Panel principal",
+    "events": "Eventos",
+    "quotes": "Presupuestos",
+    "clients": "Clientes",
+    "menus": "Menús",
+    "finances": "Finanzas",
+    "settings": "Configuración"
+  },
+  "Header": {
+    "title": "Resumen general",
+    "description": "Supervisa las operaciones de tu empresa de catering.",
+    "company": "Mi empresa",
+    "administrator": "Administrador",
+    "search": "Buscar",
+    "notifications": "Notificaciones"
+  },
+  "Dashboard": {
+    "title": "Panel principal",
+    "welcome": "Bienvenido a CaterFlow. Aquí tienes el resumen de tu operación.",
+    "eventsThisMonth": "Eventos este mes",
+    "upcomingEvents": "4 eventos en los próximos 7 días",
+    "pendingQuotes": "Presupuestos pendientes",
+    "awaitingApproval": "Esperando la aprobación del cliente",
+    "expectedRevenue": "Ingresos previstos",
+    "confirmedEvents": "Correspondientes a eventos confirmados",
+    "activeClients": "Clientes activos",
+    "registeredClients": "Clientes registrados en la plataforma",
+    "nextEvents": "Próximos eventos",
+    "scheduledEvents": "Consulta los eventos programados.",
+    "viewAll": "Ver todos",
+    "recentActivity": "Actividad reciente",
+    "latestUpdates": "Últimas actualizaciones de la operación",
+    "corporateEvent": "Evento corporativo",
+    "birthday": "Cumpleaños",
+    "coffeeBreak": "Coffee break",
+    "confirmed": "Confirmado",
+    "preparing": "En preparación",
+    "quoteCreated": "Nuevo presupuesto creado",
+    "corporateQuote": "Presupuesto para evento corporativo",
+    "eventConfirmed": "Evento confirmado",
+    "mariasBirthday": "Cumpleaños de María González",
+    "clientRegistered": "Nuevo cliente registrado",
+    "companyXYZ": "Empresa XYZ",
+    "twentyMinutesAgo": "Hace 20 minutos",
+    "twoHoursAgo": "Hace 2 horas",
+    "yesterday": "Ayer"
+  }
+}
