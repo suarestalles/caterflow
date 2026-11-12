@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, String
+from sqlalchemy import Boolean, CheckConstraint, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.abstract import Abstract
@@ -6,6 +6,13 @@ from app.models.abstract import Abstract
 
 class User(Abstract):
     __tablename__ = "users"
+
+    __table_args__ = (
+        CheckConstraint(
+            "email = lower(email)",
+            name="email_lowercase",
+        ),
+    )
 
     full_name: Mapped[str] = mapped_column(
         String(150),
