@@ -8,6 +8,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.permissions import PermissionCode
 from app.core.security import decode_access_token
 from app.db.session import get_db
 from app.db.tenant_session import TenantSession, get_tenant_db
@@ -15,6 +16,7 @@ from app.models.membership import Membership
 from app.models.platform_admin import PlatformAdmin
 from app.models.user import User
 from app.repositories import auth as auth_repository
+from app.services.permissions import get_effective_permissions
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
@@ -145,3 +147,39 @@ def get_current_platform_admin(
         user=user,
         platform_admin=platform_admin,
     )
+
+def require_permission(permission_code: PermissionCode | str):
+    """Require the authenticated user to have a specific permission."""
+
+    required_code = str(permission_code)
+
+    def permission_dependency(
+        auth: AuthContext = Depends(get_auth_context),
+        db: TenantSession = Depends(get_current_tenant_db),
+    ) -> None:
+        membership_id = db.scalar(
+            select(Membership.id).where(
+                Membership.user_id == auth.user.id,
+                Membership.tenant_id == auth.tenant_id,
+            )
+        )
+
+        if membership_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You do not have access to this tenant.",
+            )
+
+        permissions = get_effective_permissions(
+            db=db,
+            membership_id=membership_id,
+            tenant_id=auth.tenant_id,
+        )
+
+        if required_code not in permissions:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Insufficient permissions.",
+            )
+
+    return permission_dependency

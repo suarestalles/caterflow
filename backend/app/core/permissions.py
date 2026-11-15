@@ -55,7 +55,13 @@ class PermissionCode(StrEnum):
 
     # Roles
     ROLES_READ = "roles.read"
-    ROLES_MANAGE = "roles.manage"
+    ROLES_CREATE = "roles.create"
+    ROLES_UPDATE = "roles.update"
+    ROLES_DELETE = "roles.delete"
+
+    # Role permissions
+    ROLES_PERMISSIONS_VIEW = "roles.permissions.view"
+    ROLES_PERMISSIONS_MANAGE = "roles.permissions.manage"
 
     # Settings
     SETTINGS_READ = "settings.read"
@@ -238,9 +244,30 @@ PERMISSION_CATALOG: tuple[PermissionDefinition, ...] = (
         "View company roles.",
     ),
     PermissionDefinition(
-        PermissionCode.ROLES_MANAGE,
+        PermissionCode.ROLES_CREATE,
         "roles",
-        "Create, update and manage company roles.",
+        "Create company roles.",
+    ),
+    PermissionDefinition(
+        PermissionCode.ROLES_UPDATE,
+        "roles",
+        "Update company roles.",
+    ),
+    PermissionDefinition(
+        PermissionCode.ROLES_DELETE,
+        "roles",
+        "Delete company roles.",
+    ),
+    # Role permissions
+    PermissionDefinition(
+        PermissionCode.ROLES_PERMISSIONS_VIEW,
+        "roles",
+        "View permissions assigned to company roles.",
+    ),
+    PermissionDefinition(
+        PermissionCode.ROLES_PERMISSIONS_MANAGE,
+        "roles",
+        "Manage permissions assigned to company roles.",
     ),
     # Settings
     PermissionDefinition(
@@ -258,4 +285,83 @@ PERMISSION_CATALOG: tuple[PermissionDefinition, ...] = (
 
 PERMISSION_BY_CODE: dict[PermissionCode, PermissionDefinition] = {
     permission.code: permission for permission in PERMISSION_CATALOG
+}
+
+DEFAULT_ROLE_PERMISSIONS: dict[str, frozenset[PermissionCode]] = {
+    "Owner": frozenset(PermissionCode),
+
+    "Admin": frozenset({
+        PermissionCode.DASHBOARD_READ,
+        PermissionCode.EVENTS_READ,
+        PermissionCode.EVENTS_CREATE,
+        PermissionCode.EVENTS_UPDATE,
+        PermissionCode.EVENTS_CANCEL,
+        PermissionCode.QUOTES_READ,
+        PermissionCode.QUOTES_CREATE,
+        PermissionCode.QUOTES_UPDATE,
+        PermissionCode.QUOTES_SEND,
+        PermissionCode.CLIENTS_READ,
+        PermissionCode.CLIENTS_CREATE,
+        PermissionCode.CLIENTS_UPDATE,
+        PermissionCode.CLIENTS_ARCHIVE,
+        PermissionCode.MENUS_READ,
+        PermissionCode.MENUS_CREATE,
+        PermissionCode.MENUS_UPDATE,
+        PermissionCode.MENUS_ARCHIVE,
+        PermissionCode.STAFF_READ,
+        PermissionCode.STAFF_CREATE,
+        PermissionCode.STAFF_UPDATE,
+        PermissionCode.STAFF_ARCHIVE,
+        PermissionCode.STAFF_ASSIGN,
+        PermissionCode.FINANCE_READ,
+        PermissionCode.FINANCE_EXPENSES_MANAGE,
+        PermissionCode.FINANCE_PAYMENTS_MANAGE,
+        PermissionCode.REPORTS_READ,
+        PermissionCode.USERS_READ,
+        PermissionCode.USERS_INVITE,
+        PermissionCode.USERS_UPDATE,
+        PermissionCode.USERS_DEACTIVATE,
+        PermissionCode.ROLES_READ,
+        PermissionCode.SETTINGS_READ,
+    }),
+
+    "Manager": frozenset({
+        PermissionCode.DASHBOARD_READ,
+        PermissionCode.EVENTS_READ,
+        PermissionCode.EVENTS_CREATE,
+        PermissionCode.EVENTS_UPDATE,
+        PermissionCode.QUOTES_READ,
+        PermissionCode.QUOTES_CREATE,
+        PermissionCode.QUOTES_UPDATE,
+        PermissionCode.QUOTES_SEND,
+        PermissionCode.CLIENTS_READ,
+        PermissionCode.CLIENTS_CREATE,
+        PermissionCode.CLIENTS_UPDATE,
+        PermissionCode.MENUS_READ,
+        PermissionCode.MENUS_CREATE,
+        PermissionCode.MENUS_UPDATE,
+        PermissionCode.STAFF_READ,
+        PermissionCode.STAFF_CREATE,
+        PermissionCode.STAFF_UPDATE,
+        PermissionCode.STAFF_ASSIGN,
+        PermissionCode.FINANCE_READ,
+        PermissionCode.REPORTS_READ,
+        PermissionCode.ROLES_READ,
+    }),
+
+    "Member": frozenset({
+        PermissionCode.DASHBOARD_READ,
+        PermissionCode.EVENTS_READ,
+        PermissionCode.QUOTES_READ,
+        PermissionCode.CLIENTS_READ,
+        PermissionCode.MENUS_READ,
+        PermissionCode.STAFF_READ,
+    }),
+}
+
+DEFAULT_ROLE_DESCRIPTIONS: dict[str, str] = {
+    "Owner": "Full access to all tenant resources and permissions.",
+    "Admin": "Administrative access to daily operations and user management.",
+    "Manager": "Access to operational management and reports.",
+    "Member": "Limited access to operational information.",
 }

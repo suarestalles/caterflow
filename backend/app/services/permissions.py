@@ -1,8 +1,11 @@
+import uuid
+
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
 from app.core.permissions import PERMISSION_CATALOG
+from app.models.membership_role import MembershipRole
 from app.models.permission import Permission
 from app.models.role import Role
 from app.models.role_permission import RolePermission
@@ -82,3 +85,29 @@ def sync_permissions(db: Session) -> None:
 
     sync_permission_catalog(db)
     sync_owner_role_permissions(db)
+
+def get_effective_permissions(
+    db: Session,
+    membership_id: uuid.UUID,
+    tenant_id: uuid.UUID,
+) -> set[str]:
+    """Return all permission codes granted to a tenant membership."""
+
+    statement = (
+        select(Permission.code)
+        .join(
+            RolePermission,
+            RolePermission.permission_id == Permission.id,
+        )
+        .join(
+            MembershipRole,
+            MembershipRole.role_id == RolePermission.role_id,
+        )
+        .where(
+            MembershipRole.membership_id == membership_id,
+            MembershipRole.tenant_id == tenant_id,
+            RolePermission.tenant_id == tenant_id,
+        )
+    )
+
+    return set(db.scalars(statement).all())
