@@ -4,9 +4,10 @@ from sqlalchemy import ForeignKey, UniqueConstraint, and_
 from sqlalchemy.orm import Mapped, foreign, mapped_column, relationship
 
 from app.models.abstract import Abstract
+from app.models.tenant_scoped import TenantScoped
 
 
-class Membership(Abstract):
+class Membership(Abstract, TenantScoped):
     __tablename__ = "memberships"
 
     __table_args__ = (
@@ -29,11 +30,6 @@ class Membership(Abstract):
             Membership.tenant_id == MembershipRole.tenant_id,
             Membership.id == foreign(MembershipRole.membership_id),
         )
-
-    tenant_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("tenants.id", ondelete="CASCADE"),
-        nullable=False,
-    )
 
     user_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"),

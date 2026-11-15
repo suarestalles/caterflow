@@ -57,6 +57,7 @@ def sync_owner_role_permissions(db: Session) -> None:
 
     values = [
         {
+            "tenant_id": role.tenant_id,
             "role_id": role.id,
             "permission_id": permission_id,
         }

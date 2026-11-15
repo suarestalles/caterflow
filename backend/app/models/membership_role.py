@@ -1,14 +1,15 @@
 import uuid
 
-from sqlalchemy import ForeignKey, ForeignKeyConstraint, Index, UniqueConstraint, and_
+from sqlalchemy import ForeignKeyConstraint, Index, UniqueConstraint, and_
 from sqlalchemy.orm import Mapped, foreign, mapped_column, relationship
 
 from app.models.abstract import Abstract
 from app.models.membership import Membership
 from app.models.role import Role
+from app.models.tenant_scoped import TenantScoped
 
 
-class MembershipRole(Abstract):
+class MembershipRole(Abstract, TenantScoped):
     __tablename__ = "membership_roles"
 
     __table_args__ = (
@@ -39,11 +40,6 @@ class MembershipRole(Abstract):
             "tenant_id",
             "role_id",
         ),
-    )
-
-    tenant_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("tenants.id", ondelete="CASCADE"),
-        nullable=False,
     )
 
     membership_id: Mapped[uuid.UUID] = mapped_column(

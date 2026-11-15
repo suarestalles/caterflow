@@ -1,12 +1,11 @@
-import uuid
-
-from sqlalchemy import Boolean, ForeignKey, String, UniqueConstraint, and_
+from sqlalchemy import Boolean, String, UniqueConstraint, and_
 from sqlalchemy.orm import Mapped, foreign, mapped_column, relationship
 
 from app.models.abstract import Abstract
+from app.models.tenant_scoped import TenantScoped
 
 
-class Role(Abstract):
+class Role(Abstract, TenantScoped):
     __tablename__ = "roles"
 
     __table_args__ = (
@@ -29,11 +28,6 @@ class Role(Abstract):
             Role.tenant_id == MembershipRole.tenant_id,
             Role.id == foreign(MembershipRole.role_id),
         )
-
-    tenant_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("tenants.id", ondelete="CASCADE"),
-        nullable=False,
-    )
 
     name: Mapped[str] = mapped_column(
         String(100),
