@@ -25,3 +25,10 @@ class Tenant(Abstract):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
+
+    clients = relationship(
+        "Client",
+        back_populates="tenant",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
