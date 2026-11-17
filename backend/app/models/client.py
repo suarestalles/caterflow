@@ -1,4 +1,3 @@
-
 from datetime import datetime
 
 from sqlalchemy import (
@@ -105,4 +104,13 @@ class Client(Abstract, TenantScoped):
     tenant = relationship(
         "Tenant",
         back_populates="clients",
+    )
+
+    events = relationship(
+        "Event",
+        back_populates="client",
+        primaryjoin="and_("
+        "Client.id == foreign(Event.client_id), "
+        "Client.tenant_id == Event.tenant_id"
+        ")",
     )

@@ -1,4 +1,3 @@
-
 from dataclasses import dataclass
 
 from sqlalchemy import select
@@ -36,23 +35,15 @@ def create_initial_tenant(
 
     The caller is responsible for managing the transaction.
     """
-    existing_admin = db.scalar(
-        select(PlatformAdmin.id).limit(1)
-    )
+    existing_admin = db.scalar(select(PlatformAdmin.id).limit(1))
 
     if existing_admin is not None:
-        raise RuntimeError(
-            "Platform bootstrap has already been completed."
-        )
+        raise RuntimeError("Platform bootstrap has already been completed.")
 
-    existing_user = db.scalar(
-        select(User.id).where(User.email == email)
-    )
+    existing_user = db.scalar(select(User.id).where(User.email == email))
 
     if existing_user is not None:
-        raise ValueError(
-            "A user with this email already exists."
-        )
+        raise ValueError("A user with this email already exists.")
 
     user = User(
         full_name=full_name,

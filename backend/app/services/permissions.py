@@ -86,6 +86,7 @@ def sync_permissions(db: Session) -> None:
     sync_permission_catalog(db)
     sync_owner_role_permissions(db)
 
+
 def get_effective_permissions(
     db: Session,
     membership_id: uuid.UUID,

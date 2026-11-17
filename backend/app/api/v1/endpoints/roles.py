@@ -1,4 +1,3 @@
-
 from fastapi import APIRouter, Depends
 from sqlalchemy import select
 
@@ -16,16 +15,12 @@ router = APIRouter()
 @router.get(
     "/",
     tags=["Roles"],
-    dependencies=[
-        Depends(require_permission(PermissionCode.ROLES_READ))
-    ],
+    dependencies=[Depends(require_permission(PermissionCode.ROLES_READ))],
 )
 def list_roles(
     db: TenantSession = Depends(get_current_tenant_db),
 ):
-    roles = db.scalars(
-        select(Role).order_by(Role.name)
-    ).all()
+    roles = db.scalars(select(Role).order_by(Role.name)).all()
 
     return [
         {

@@ -1,8 +1,6 @@
-
 from collections.abc import Generator
 
 import pytest
-from fastapi import HTTPException
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -87,9 +85,7 @@ def assign_permissions(
     for permission_code in permission_codes:
         code = permission_code.value
 
-        permission = db_session.scalar(
-            select(Permission).where(Permission.code == code)
-        )
+        permission = db_session.scalar(select(Permission).where(Permission.code == code))
 
         if permission is None:
             permission = Permission(
@@ -153,12 +149,8 @@ def api_client_factory(
             finally:
                 tenant_db.close()
 
-        app.dependency_overrides[get_auth_context] = (
-            override_auth_context
-        )
-        app.dependency_overrides[get_current_tenant_db] = (
-            override_tenant_db
-        )
+        app.dependency_overrides[get_auth_context] = override_auth_context
+        app.dependency_overrides[get_current_tenant_db] = override_tenant_db
 
         return TestClient(app), tenant, user
 
@@ -219,9 +211,7 @@ def test_clients_api_requires_authentication(db_session):
 
 
 def test_create_client_api(api_client_factory):
-    client, tenant, _ = api_client_factory(
-        [PermissionCode.CLIENTS_CREATE]
-    )
+    client, tenant, _ = api_client_factory([PermissionCode.CLIENTS_CREATE])
 
     with client:
         response = client.post(
@@ -241,9 +231,7 @@ def test_create_client_api(api_client_factory):
 
 
 def test_create_company_client_api(api_client_factory):
-    client, tenant, _ = api_client_factory(
-        [PermissionCode.CLIENTS_CREATE]
-    )
+    client, tenant, _ = api_client_factory([PermissionCode.CLIENTS_CREATE])
 
     with client:
         response = client.post(
@@ -270,9 +258,7 @@ def test_create_company_client_api(api_client_factory):
 def test_create_client_api_without_contact_returns_422(
     api_client_factory,
 ):
-    client, _, _ = api_client_factory(
-        [PermissionCode.CLIENTS_CREATE]
-    )
+    client, _, _ = api_client_factory([PermissionCode.CLIENTS_CREATE])
 
     with client:
         response = client.post(
@@ -307,9 +293,7 @@ def test_create_client_api_without_permission_returns_403(
 
 
 def test_list_clients_api(api_client_factory, db_session):
-    client, tenant, _ = api_client_factory(
-        [PermissionCode.CLIENTS_READ]
-    )
+    client, tenant, _ = api_client_factory([PermissionCode.CLIENTS_READ])
 
     create_persisted_client(
         db_session,
@@ -337,9 +321,7 @@ def test_list_clients_api(api_client_factory, db_session):
 
 
 def test_list_clients_api_with_search(api_client_factory, db_session):
-    client, tenant, _ = api_client_factory(
-        [PermissionCode.CLIENTS_READ]
-    )
+    client, tenant, _ = api_client_factory([PermissionCode.CLIENTS_READ])
 
     create_persisted_client(
         db_session,
@@ -368,9 +350,7 @@ def test_list_clients_api_with_search(api_client_factory, db_session):
 
 
 def test_list_clients_api_validates_pagination(api_client_factory):
-    client, _, _ = api_client_factory(
-        [PermissionCode.CLIENTS_READ]
-    )
+    client, _, _ = api_client_factory([PermissionCode.CLIENTS_READ])
 
     with client:
         response = client.get(
@@ -398,9 +378,7 @@ def test_list_clients_api_without_permission_returns_403(
 
 
 def test_get_client_api(api_client_factory, db_session):
-    client, tenant, _ = api_client_factory(
-        [PermissionCode.CLIENTS_READ]
-    )
+    client, tenant, _ = api_client_factory([PermissionCode.CLIENTS_READ])
 
     persisted_client = create_persisted_client(
         db_session,
@@ -408,9 +386,7 @@ def test_get_client_api(api_client_factory, db_session):
     )
 
     with client:
-        response = client.get(
-            f"/api/v1/clients/{persisted_client.id}"
-        )
+        response = client.get(f"/api/v1/clients/{persisted_client.id}")
 
     assert response.status_code == 200
     assert response.json()["id"] == str(persisted_client.id)
@@ -418,14 +394,10 @@ def test_get_client_api(api_client_factory, db_session):
 
 
 def test_get_nonexistent_client_api_returns_404(api_client_factory):
-    client, _, _ = api_client_factory(
-        [PermissionCode.CLIENTS_READ]
-    )
+    client, _, _ = api_client_factory([PermissionCode.CLIENTS_READ])
 
     with client:
-        response = client.get(
-            "/api/v1/clients/00000000-0000-0000-0000-000000000001"
-        )
+        response = client.get("/api/v1/clients/00000000-0000-0000-0000-000000000001")
 
     assert response.status_code == 404
     assert response.json()["detail"] == "Client not found."
@@ -435,9 +407,7 @@ def test_get_client_from_another_tenant_api_returns_404(
     api_client_factory,
     db_session,
 ):
-    client, _, _ = api_client_factory(
-        [PermissionCode.CLIENTS_READ]
-    )
+    client, _, _ = api_client_factory([PermissionCode.CLIENTS_READ])
 
     other_tenant = create_tenant(
         db_session,
@@ -451,9 +421,7 @@ def test_get_client_from_another_tenant_api_returns_404(
     )
 
     with client:
-        response = client.get(
-            f"/api/v1/clients/{other_client.id}"
-        )
+        response = client.get(f"/api/v1/clients/{other_client.id}")
 
     assert response.status_code == 404
 
@@ -464,9 +432,7 @@ def test_get_client_from_another_tenant_api_returns_404(
 
 
 def test_update_client_api(api_client_factory, db_session):
-    client, tenant, _ = api_client_factory(
-        [PermissionCode.CLIENTS_UPDATE]
-    )
+    client, tenant, _ = api_client_factory([PermissionCode.CLIENTS_UPDATE])
 
     persisted_client = create_persisted_client(
         db_session,
@@ -495,9 +461,7 @@ def test_update_client_api_without_contact_returns_422(
     api_client_factory,
     db_session,
 ):
-    client, tenant, _ = api_client_factory(
-        [PermissionCode.CLIENTS_UPDATE]
-    )
+    client, tenant, _ = api_client_factory([PermissionCode.CLIENTS_UPDATE])
 
     persisted_client = create_persisted_client(
         db_session,
@@ -539,9 +503,7 @@ def test_update_client_api_without_permission_returns_403(
 def test_update_nonexistent_client_api_returns_404(
     api_client_factory,
 ):
-    client, _, _ = api_client_factory(
-        [PermissionCode.CLIENTS_UPDATE]
-    )
+    client, _, _ = api_client_factory([PermissionCode.CLIENTS_UPDATE])
 
     with client:
         response = client.patch(
@@ -558,9 +520,7 @@ def test_update_nonexistent_client_api_returns_404(
 
 
 def test_archive_client_api(api_client_factory, db_session):
-    client, tenant, _ = api_client_factory(
-        [PermissionCode.CLIENTS_ARCHIVE]
-    )
+    client, tenant, _ = api_client_factory([PermissionCode.CLIENTS_ARCHIVE])
 
     persisted_client = create_persisted_client(
         db_session,
@@ -568,9 +528,7 @@ def test_archive_client_api(api_client_factory, db_session):
     )
 
     with client:
-        response = client.delete(
-            f"/api/v1/clients/{persisted_client.id}"
-        )
+        response = client.delete(f"/api/v1/clients/{persisted_client.id}")
 
     assert response.status_code == 204
     assert response.content == b""
@@ -588,9 +546,7 @@ def test_archive_client_api_without_permission_returns_403(
     )
 
     with client:
-        response = client.delete(
-            f"/api/v1/clients/{persisted_client.id}"
-        )
+        response = client.delete(f"/api/v1/clients/{persisted_client.id}")
 
     assert response.status_code == 403
 
@@ -598,14 +554,10 @@ def test_archive_client_api_without_permission_returns_403(
 def test_archive_nonexistent_client_api_returns_404(
     api_client_factory,
 ):
-    client, _, _ = api_client_factory(
-        [PermissionCode.CLIENTS_ARCHIVE]
-    )
+    client, _, _ = api_client_factory([PermissionCode.CLIENTS_ARCHIVE])
 
     with client:
-        response = client.delete(
-            "/api/v1/clients/00000000-0000-0000-0000-000000000001"
-        )
+        response = client.delete("/api/v1/clients/00000000-0000-0000-0000-000000000001")
 
     assert response.status_code == 404
 
@@ -627,13 +579,9 @@ def test_archived_client_is_not_available_through_api(
     )
 
     with client:
-        archive_response = client.delete(
-            f"/api/v1/clients/{persisted_client.id}"
-        )
+        archive_response = client.delete(f"/api/v1/clients/{persisted_client.id}")
 
-        get_response = client.get(
-            f"/api/v1/clients/{persisted_client.id}"
-        )
+        get_response = client.get(f"/api/v1/clients/{persisted_client.id}")
 
     assert archive_response.status_code == 204
     assert get_response.status_code == 404

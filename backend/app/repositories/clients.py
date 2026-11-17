@@ -1,4 +1,3 @@
-
 from uuid import UUID
 
 from sqlalchemy import func, or_, select
@@ -35,17 +34,11 @@ def list_clients(
             )
         )
 
-    count_statement = select(func.count()).select_from(
-        statement.order_by(None).subquery()
-    )
+    count_statement = select(func.count()).select_from(statement.order_by(None).subquery())
 
     total = db.scalar(count_statement) or 0
 
-    statement = (
-        statement.order_by(Client.name.asc(), Client.id.asc())
-        .offset(offset)
-        .limit(limit)
-    )
+    statement = statement.order_by(Client.name.asc(), Client.id.asc()).offset(offset).limit(limit)
 
     clients = list(db.scalars(statement).all())
 

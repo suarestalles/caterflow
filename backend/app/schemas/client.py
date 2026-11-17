@@ -1,6 +1,5 @@
-
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from uuid import UUID
 
 from pydantic import (
@@ -13,7 +12,7 @@ from pydantic import (
 )
 
 
-class ClientType(str, Enum):
+class ClientType(StrEnum):
     INDIVIDUAL = "individual"
     COMPANY = "company"
 
@@ -89,9 +88,7 @@ class ClientCreate(ClientBase):
     @model_validator(mode="after")
     def validate_contact(self):
         if not self.email and not self.phone:
-            raise ValueError(
-                "At least one contact method (email or phone) is required."
-            )
+            raise ValueError("At least one contact method (email or phone) is required.")
         return self
 
 

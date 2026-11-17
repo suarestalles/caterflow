@@ -1,21 +1,18 @@
 import pytest
 from fastapi import HTTPException
-
-from app.api.v1.deps import AuthContext, require_permission
-from app.core.permissions import PermissionCode
-from app.models.membership import Membership
-from app.models.membership_role import MembershipRole
-from app.models.user import User
-from app.services.permissions import get_effective_permissions
-
 from sqlalchemy import select
 
-from app.core.permissions import PERMISSION_CATALOG
+from app.api.v1.deps import AuthContext, require_permission
+from app.core.permissions import PERMISSION_CATALOG, PermissionCode
+from app.models.membership import Membership
+from app.models.membership_role import MembershipRole
 from app.models.permission import Permission
 from app.models.role import Role
 from app.models.role_permission import RolePermission
 from app.models.tenant import Tenant
+from app.models.user import User
 from app.services.permissions import (
+    get_effective_permissions,
     sync_permission_catalog,
     sync_permissions,
 )
@@ -105,10 +102,9 @@ def test_sync_permissions_is_idempotent(db_session):
     assert len(permissions) == len(PERMISSION_CATALOG)
     assert len(owner_permissions) == len(PERMISSION_CATALOG)
 
+
 def get_or_create_permission(db_session, code: PermissionCode) -> Permission:
-    permission = db_session.scalar(
-        select(Permission).where(Permission.code == code.value)
-    )
+    permission = db_session.scalar(select(Permission).where(Permission.code == code.value))
 
     if permission is None:
         permission = Permission(

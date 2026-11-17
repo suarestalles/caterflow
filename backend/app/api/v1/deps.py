@@ -148,6 +148,7 @@ def get_current_platform_admin(
         platform_admin=platform_admin,
     )
 
+
 def require_permission(permission_code: PermissionCode | str):
     """Require the authenticated user to have a specific permission."""
 

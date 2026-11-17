@@ -1,10 +1,8 @@
-
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.engine import make_url
 from sqlalchemy.orm import Session
 
-import app.models
 from app.core.config import settings
 from app.db.base import Base
 

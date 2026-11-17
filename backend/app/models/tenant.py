@@ -32,3 +32,10 @@ class Tenant(Abstract):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
+
+    events = relationship(
+        "Event",
+        back_populates="tenant",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )

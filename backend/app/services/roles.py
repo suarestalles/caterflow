@@ -1,4 +1,3 @@
-
 from uuid import UUID
 
 from sqlalchemy import select
@@ -19,15 +18,11 @@ def provision_default_roles(
 ) -> dict[str, Role]:
     """Create default tenant roles and grant their initial permissions."""
     if db.platform_access or db.tenant_id != tenant_id:
-        raise PermissionError(
-            "A matching tenant-scoped session is required."
-        )
+        raise PermissionError("A matching tenant-scoped session is required.")
 
     role_names = list(DEFAULT_ROLE_PERMISSIONS)
 
-    roles = db.scalars(
-        select(Role).where(Role.name.in_(role_names))
-    ).all()
+    roles = db.scalars(select(Role).where(Role.name.in_(role_names))).all()
 
     roles_by_name = {role.name: role for role in roles}
 
@@ -36,9 +31,7 @@ def provision_default_roles(
 
         if role is not None:
             if not role.is_system:
-                raise ValueError(
-                    f"Role name '{role_name}' is reserved for system roles."
-                )
+                raise ValueError(f"Role name '{role_name}' is reserved for system roles.")
             continue
 
         role = Role(
@@ -53,27 +46,18 @@ def provision_default_roles(
     db.flush()
 
     required_codes = {
-        code.value
-        for permissions in DEFAULT_ROLE_PERMISSIONS.values()
-        for code in permissions
+        code.value for permissions in DEFAULT_ROLE_PERMISSIONS.values() for code in permissions
     }
 
-    permissions = db.scalars(
-        select(Permission).where(Permission.code.in_(required_codes))
-    ).all()
+    permissions = db.scalars(select(Permission).where(Permission.code.in_(required_codes))).all()
 
-    permissions_by_code = {
-        permission.code: permission
-        for permission in permissions
-    }
+    permissions_by_code = {permission.code: permission for permission in permissions}
 
     missing_codes = required_codes - permissions_by_code.keys()
 
     if missing_codes:
         missing = ", ".join(sorted(missing_codes))
-        raise RuntimeError(
-            f"Permission catalog is missing required codes: {missing}"
-        )
+        raise RuntimeError(f"Permission catalog is missing required codes: {missing}")
 
     role_ids = [role.id for role in roles_by_name.values()]
 
@@ -84,10 +68,7 @@ def provision_default_roles(
         ).where(RolePermission.role_id.in_(role_ids))
     ).all()
 
-    assigned = {
-        (role_id, permission_id)
-        for role_id, permission_id in existing_assignments
-    }
+    assigned = {(role_id, permission_id) for role_id, permission_id in existing_assignments}
 
     for role_name, role in roles_by_name.items():
         for permission_code in DEFAULT_ROLE_PERMISSIONS[role_name]:

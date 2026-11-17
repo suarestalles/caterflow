@@ -1,4 +1,3 @@
-
 import pytest
 from sqlalchemy import func, select
 
@@ -44,23 +43,13 @@ def test_create_initial_tenant_provisions_default_roles(
         tenant_name="Roles Bootstrap Tenant",
     )
 
-    roles = db_session.scalars(
-        select(Role).where(
-            Role.tenant_id == result.tenant.id
-        )
-    ).all()
+    roles = db_session.scalars(select(Role).where(Role.tenant_id == result.tenant.id)).all()
 
-    roles_by_name = {
-        role.name: role
-        for role in roles
-    }
+    roles_by_name = {role.name: role for role in roles}
 
     assert set(roles_by_name) == set(DEFAULT_ROLE_PERMISSIONS)
 
-    assert all(
-        role.is_system
-        for role in roles
-    )
+    assert all(role.is_system for role in roles)
 
 
 def test_create_initial_tenant_assigns_membership_to_owner(
@@ -132,9 +121,7 @@ def test_create_initial_tenant_rejects_existing_platform_admin(
     db_session.add(user)
     db_session.flush()
 
-    db_session.add(
-        PlatformAdmin(user_id=user.id)
-    )
+    db_session.add(PlatformAdmin(user_id=user.id))
     db_session.flush()
 
     with pytest.raises(

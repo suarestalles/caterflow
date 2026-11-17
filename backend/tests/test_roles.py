@@ -1,4 +1,3 @@
-
 from unittest.mock import MagicMock
 from uuid import uuid4
 
@@ -33,9 +32,7 @@ def create_tenant_session(
 def create_permission_catalog(db_session):
     """Ensure all permissions required by default roles exist."""
     for code in PermissionCode:
-        permission = db_session.scalar(
-            select(Permission).where(Permission.code == code.value)
-        )
+        permission = db_session.scalar(select(Permission).where(Permission.code == code.value))
 
         if permission is None:
             db_session.add(
@@ -94,10 +91,7 @@ def test_provision_default_roles_assigns_expected_permissions(db_session):
                 ).all()
             )
 
-            expected_codes = {
-                code.value
-                for code in DEFAULT_ROLE_PERMISSIONS[role_name]
-            }
+            expected_codes = {code.value for code in DEFAULT_ROLE_PERMISSIONS[role_name]}
 
             assert assigned_codes == expected_codes
 
@@ -116,26 +110,16 @@ def test_provision_default_roles_is_idempotent(db_session):
         first_result = provision_default_roles(tenant_db, tenant.id)
         tenant_db.flush()
 
-        first_role_ids = {
-            name: role.id
-            for name, role in first_result.items()
-        }
+        first_role_ids = {name: role.id for name, role in first_result.items()}
 
-        first_assignment_count = len(
-            tenant_db.scalars(select(RolePermission.id)).all()
-        )
+        first_assignment_count = len(tenant_db.scalars(select(RolePermission.id)).all())
 
         second_result = provision_default_roles(tenant_db, tenant.id)
         tenant_db.flush()
 
-        second_role_ids = {
-            name: role.id
-            for name, role in second_result.items()
-        }
+        second_role_ids = {name: role.id for name, role in second_result.items()}
 
-        second_assignment_count = len(
-            tenant_db.scalars(select(RolePermission.id)).all()
-        )
+        second_assignment_count = len(tenant_db.scalars(select(RolePermission.id)).all())
 
         assert first_role_ids == second_role_ids
         assert first_assignment_count == second_assignment_count

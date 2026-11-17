@@ -1,4 +1,3 @@
-
 from datetime import UTC, datetime
 from uuid import UUID
 
@@ -92,19 +91,13 @@ def update_client(
     )
 
     if data.get("name", client.name) is None:
-        raise InvalidClientDataError(
-            "Client name cannot be null."
-        )
+        raise InvalidClientDataError("Client name cannot be null.")
 
     if data.get("client_type", client.client_type) is None:
-        raise InvalidClientDataError(
-            "Client type cannot be null."
-        )
+        raise InvalidClientDataError("Client type cannot be null.")
 
     if data.get("country", client.country) is None:
-        raise InvalidClientDataError(
-            "Client country cannot be null."
-        )
+        raise InvalidClientDataError("Client country cannot be null.")
 
     try:
         client = client_repository.update_client(
@@ -151,6 +144,4 @@ def _validate_contact(
     phone: str | None,
 ) -> None:
     if not email and not phone:
-        raise InvalidClientDataError(
-            "At least one contact method (email or phone) is required."
-        )
+        raise InvalidClientDataError("At least one contact method (email or phone) is required.")

@@ -1,4 +1,3 @@
-
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
@@ -29,9 +28,7 @@ router = APIRouter(tags=["Clients"])
     "/",
     response_model=ClientResponse,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[
-        Depends(require_permission(PermissionCode.CLIENTS_CREATE))
-    ],
+    dependencies=[Depends(require_permission(PermissionCode.CLIENTS_CREATE))],
 )
 def create_client_endpoint(
     payload: ClientCreate,
@@ -52,9 +49,7 @@ def create_client_endpoint(
 @router.get(
     "/",
     response_model=ClientListResponse,
-    dependencies=[
-        Depends(require_permission(PermissionCode.CLIENTS_READ))
-    ],
+    dependencies=[Depends(require_permission(PermissionCode.CLIENTS_READ))],
 )
 def list_clients_endpoint(
     offset: int = Query(default=0, ge=0),
@@ -80,9 +75,7 @@ def list_clients_endpoint(
 @router.get(
     "/{client_id}",
     response_model=ClientResponse,
-    dependencies=[
-        Depends(require_permission(PermissionCode.CLIENTS_READ))
-    ],
+    dependencies=[Depends(require_permission(PermissionCode.CLIENTS_READ))],
 )
 def get_client_endpoint(
     client_id: UUID,
@@ -103,9 +96,7 @@ def get_client_endpoint(
 @router.patch(
     "/{client_id}",
     response_model=ClientResponse,
-    dependencies=[
-        Depends(require_permission(PermissionCode.CLIENTS_UPDATE))
-    ],
+    dependencies=[Depends(require_permission(PermissionCode.CLIENTS_UPDATE))],
 )
 def update_client_endpoint(
     client_id: UUID,
@@ -133,9 +124,7 @@ def update_client_endpoint(
 @router.delete(
     "/{client_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[
-        Depends(require_permission(PermissionCode.CLIENTS_ARCHIVE))
-    ],
+    dependencies=[Depends(require_permission(PermissionCode.CLIENTS_ARCHIVE))],
 )
 def archive_client_endpoint(
     client_id: UUID,

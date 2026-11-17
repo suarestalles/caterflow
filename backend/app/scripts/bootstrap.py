@@ -1,4 +1,3 @@
-
 from getpass import getpass
 
 from app.core.security import hash_password
