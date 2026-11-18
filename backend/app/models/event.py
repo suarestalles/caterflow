@@ -131,3 +131,9 @@ class Event(Abstract, TenantScoped):
         "Tenant",
         back_populates="events",
     )
+
+    quotes = relationship(
+        "Quote",
+        back_populates="event",
+        primaryjoin="and_(Event.id == foreign(Quote.event_id), Event.tenant_id == Quote.tenant_id)",
+    )

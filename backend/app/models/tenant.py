@@ -39,3 +39,10 @@ class Tenant(Abstract):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
+
+    quotes = relationship(
+        "Quote",
+        back_populates="tenant",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
