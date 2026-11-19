@@ -20,6 +20,18 @@ class PermissionCode(StrEnum):
     QUOTES_UPDATE = "quotes.update"
     QUOTES_SEND = "quotes.send"
 
+    # Products
+    PRODUCTS_READ = "products.read"
+    PRODUCTS_CREATE = "products.create"
+    PRODUCTS_UPDATE = "products.update"
+    PRODUCTS_DELETE = "products.delete"
+
+    # Product categories
+    PRODUCT_CATEGORIES_READ = "product_categories.read"
+    PRODUCT_CATEGORIES_CREATE = "product_categories.create"
+    PRODUCT_CATEGORIES_UPDATE = "product_categories.update"
+    PRODUCT_CATEGORIES_DELETE = "product_categories.delete"
+
     # Clients
     CLIENTS_READ = "clients.read"
     CLIENTS_CREATE = "clients.create"
@@ -125,6 +137,48 @@ PERMISSION_CATALOG: tuple[PermissionDefinition, ...] = (
         PermissionCode.QUOTES_SEND,
         "quotes",
         "Send quotes to clients.",
+    ),
+    # Products
+    PermissionDefinition(
+        PermissionCode.PRODUCTS_READ,
+        "products",
+        "View products and services.",
+    ),
+    PermissionDefinition(
+        PermissionCode.PRODUCTS_CREATE,
+        "products",
+        "Create products and services.",
+    ),
+    PermissionDefinition(
+        PermissionCode.PRODUCTS_UPDATE,
+        "products",
+        "Update products and services.",
+    ),
+    PermissionDefinition(
+        PermissionCode.PRODUCTS_DELETE,
+        "products",
+        "Archive products and services.",
+    ),
+    # Product categories
+    PermissionDefinition(
+        PermissionCode.PRODUCT_CATEGORIES_READ,
+        "product_categories",
+        "View product categories.",
+    ),
+    PermissionDefinition(
+        PermissionCode.PRODUCT_CATEGORIES_CREATE,
+        "product_categories",
+        "Create product categories.",
+    ),
+    PermissionDefinition(
+        PermissionCode.PRODUCT_CATEGORIES_UPDATE,
+        "product_categories",
+        "Update product categories.",
+    ),
+    PermissionDefinition(
+        PermissionCode.PRODUCT_CATEGORIES_DELETE,
+        "product_categories",
+        "Archive product categories.",
     ),
     # Clients
     PermissionDefinition(
@@ -300,6 +354,14 @@ DEFAULT_ROLE_PERMISSIONS: dict[str, frozenset[PermissionCode]] = {
             PermissionCode.QUOTES_CREATE,
             PermissionCode.QUOTES_UPDATE,
             PermissionCode.QUOTES_SEND,
+            PermissionCode.PRODUCTS_READ,
+            PermissionCode.PRODUCTS_CREATE,
+            PermissionCode.PRODUCTS_UPDATE,
+            PermissionCode.PRODUCTS_DELETE,
+            PermissionCode.PRODUCT_CATEGORIES_READ,
+            PermissionCode.PRODUCT_CATEGORIES_CREATE,
+            PermissionCode.PRODUCT_CATEGORIES_UPDATE,
+            PermissionCode.PRODUCT_CATEGORIES_DELETE,
             PermissionCode.CLIENTS_READ,
             PermissionCode.CLIENTS_CREATE,
             PermissionCode.CLIENTS_UPDATE,
@@ -335,6 +397,12 @@ DEFAULT_ROLE_PERMISSIONS: dict[str, frozenset[PermissionCode]] = {
             PermissionCode.QUOTES_CREATE,
             PermissionCode.QUOTES_UPDATE,
             PermissionCode.QUOTES_SEND,
+            PermissionCode.PRODUCTS_READ,
+            PermissionCode.PRODUCTS_CREATE,
+            PermissionCode.PRODUCTS_UPDATE,
+            PermissionCode.PRODUCT_CATEGORIES_READ,
+            PermissionCode.PRODUCT_CATEGORIES_CREATE,
+            PermissionCode.PRODUCT_CATEGORIES_UPDATE,
             PermissionCode.CLIENTS_READ,
             PermissionCode.CLIENTS_CREATE,
             PermissionCode.CLIENTS_UPDATE,
@@ -355,6 +423,8 @@ DEFAULT_ROLE_PERMISSIONS: dict[str, frozenset[PermissionCode]] = {
             PermissionCode.DASHBOARD_READ,
             PermissionCode.EVENTS_READ,
             PermissionCode.QUOTES_READ,
+            PermissionCode.PRODUCTS_READ,
+            PermissionCode.PRODUCT_CATEGORIES_READ,
             PermissionCode.CLIENTS_READ,
             PermissionCode.MENUS_READ,
             PermissionCode.STAFF_READ,

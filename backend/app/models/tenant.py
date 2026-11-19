@@ -46,3 +46,17 @@ class Tenant(Abstract):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
+
+    product_categories = relationship(
+        "ProductCategory",
+        back_populates="tenant",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+    products = relationship(
+        "Product",
+        back_populates="tenant",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
