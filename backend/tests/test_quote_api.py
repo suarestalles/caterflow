@@ -1,4 +1,5 @@
 
+from decimal import Decimal
 from uuid import uuid4
 
 import pytest
@@ -19,6 +20,7 @@ from app.models.client import Client
 from app.models.membership import Membership
 from app.models.membership_role import MembershipRole
 from app.models.permission import Permission
+from app.models.product import Product, ProductType
 from app.models.role import Role
 from app.models.role_permission import RolePermission
 from app.models.tenant import Tenant
@@ -53,6 +55,26 @@ def create_client_for_tenant(db_session, tenant):
     db_session.add(client)
     db_session.flush()
     return client
+
+def create_product_for_tenant(db_session, tenant, **overrides):
+    data = {
+        "tenant_id": tenant.id,
+        "name": "Mini sanduíche",
+        "description": "Mini sanduíche natural",
+        "type": ProductType.PRODUCT.value,
+        "unit": "unit",
+        "sku": None,
+        "sale_price": Decimal("2.50"),
+        "cost_price": Decimal("1.20"),
+        "is_active": True,
+        **overrides,
+    }
+
+    product = Product(**data)
+    db_session.add(product)
+    db_session.flush()
+
+    return product
 
 
 def assign_permissions(
@@ -559,3 +581,293 @@ def test_quotes_without_authentication_return_401(db_session):
         assert response.status_code == 401
     finally:
         app.dependency_overrides.clear()
+
+
+def test_create_quote_with_catalog_product_returns_201(
+    db_session,
+    api_client,
+):
+    client, tenant, _ = api_client
+    quote_client = create_client_for_tenant(db_session, tenant)
+    product = create_product_for_tenant(db_session, tenant)
+
+    payload = create_quote_payload(
+        quote_client.id,
+        discount_amount="0.00",
+        tax_amount="0.00",
+        items=[
+            {
+                "product_id": str(product.id),
+                "quantity": "10",
+                "position": 0,
+            }
+        ],
+    )
+
+    with client:
+        response = client.post(
+            "/api/v1/quotes/",
+            json=payload,
+        )
+
+    assert response.status_code == 201
+
+    body = response.json()
+    item = body["items"][0]
+
+    assert item["product_id"] == str(product.id)
+    assert item["name"] == "Mini sanduíche"
+    assert item["description"] == "Mini sanduíche natural"
+    assert item["unit"] == "unit"
+    assert Decimal(item["quantity"]) == Decimal("10")
+    assert Decimal(item["unit_price"]) == Decimal("2.50")
+    assert Decimal(item["total_price"]) == Decimal("25.00")
+    assert Decimal(body["subtotal"]) == Decimal("25.00")
+
+
+def test_create_quote_with_negotiated_product_price_returns_201(
+    db_session,
+    api_client,
+):
+    client, tenant, _ = api_client
+    quote_client = create_client_for_tenant(db_session, tenant)
+    product = create_product_for_tenant(db_session, tenant)
+
+    payload = create_quote_payload(
+        quote_client.id,
+        discount_amount="0.00",
+        tax_amount="0.00",
+        items=[
+            {
+                "product_id": str(product.id),
+                "quantity": "10",
+                "unit_price": "2.30",
+                "position": 0,
+            }
+        ],
+    )
+
+    with client:
+        response = client.post(
+            "/api/v1/quotes/",
+            json=payload,
+        )
+
+    assert response.status_code == 201
+
+    item = response.json()["items"][0]
+
+    assert Decimal(item["unit_price"]) == Decimal("2.30")
+    assert Decimal(item["total_price"]) == Decimal("23.00")
+
+    # Negotiated price must not change the catalog price.
+    assert product.sale_price == Decimal("2.50")
+
+
+def test_create_quote_with_nonexistent_product_returns_404(
+    db_session,
+    api_client,
+):
+    client, tenant, _ = api_client
+    quote_client = create_client_for_tenant(db_session, tenant)
+
+    payload = create_quote_payload(
+        quote_client.id,
+        items=[
+            {
+                "product_id": str(uuid4()),
+                "quantity": "2",
+                "position": 0,
+            }
+        ],
+    )
+
+    with client:
+        response = client.post(
+            "/api/v1/quotes/",
+            json=payload,
+        )
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Product not found."
+
+
+def test_create_quote_with_product_from_another_tenant_returns_404(
+    db_session,
+    api_client,
+):
+    client, tenant, _ = api_client
+    quote_client = create_client_for_tenant(db_session, tenant)
+
+    other_tenant = create_tenant(
+        db_session,
+        name="Other Tenant",
+    )
+    product = create_product_for_tenant(
+        db_session,
+        other_tenant,
+    )
+
+    payload = create_quote_payload(
+        quote_client.id,
+        items=[
+            {
+                "product_id": str(product.id),
+                "quantity": "2",
+                "position": 0,
+            }
+        ],
+    )
+
+    with client:
+        response = client.post(
+            "/api/v1/quotes/",
+            json=payload,
+        )
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Product not found."
+
+
+def test_create_quote_with_archived_product_returns_422(
+    db_session,
+    api_client,
+):
+    client, tenant, _ = api_client
+    quote_client = create_client_for_tenant(db_session, tenant)
+
+    product = create_product_for_tenant(
+        db_session,
+        tenant,
+        is_active=False,
+    )
+
+    payload = create_quote_payload(
+        quote_client.id,
+        items=[
+            {
+                "product_id": str(product.id),
+                "quantity": "2",
+                "position": 0,
+            }
+        ],
+    )
+
+    with client:
+        response = client.post(
+            "/api/v1/quotes/",
+            json=payload,
+        )
+
+    assert response.status_code == 422
+    assert "Archived products" in response.json()["detail"]
+
+
+def test_update_quote_with_catalog_product_returns_200(
+    db_session,
+    api_client,
+):
+    client, tenant, _ = api_client
+    quote_client = create_client_for_tenant(db_session, tenant)
+    product = create_product_for_tenant(db_session, tenant)
+
+    with client:
+        created = client.post(
+            "/api/v1/quotes/",
+            json=create_quote_payload(quote_client.id),
+        )
+
+        assert created.status_code == 201
+
+        quote_id = created.json()["id"]
+
+        response = client.patch(
+            f"/api/v1/quotes/{quote_id}",
+            json={
+                "items": [
+                    {
+                        "product_id": str(product.id),
+                        "quantity": "4",
+                        "position": 0,
+                    }
+                ],
+                "discount_amount": "0.00",
+                "tax_amount": "0.00",
+            },
+        )
+
+    assert response.status_code == 200
+
+    body = response.json()
+    item = body["items"][0]
+
+    assert len(body["items"]) == 1
+    assert item["product_id"] == str(product.id)
+    assert item["name"] == "Mini sanduíche"
+    assert item["unit"] == "unit"
+    assert Decimal(item["unit_price"]) == Decimal("2.50")
+    assert Decimal(item["total_price"]) == Decimal("10.00")
+    assert Decimal(body["subtotal"]) == Decimal("10.00")
+
+
+def test_duplicate_quote_preserves_catalog_product_snapshot(
+    db_session,
+    api_client,
+):
+    client, tenant, _ = api_client
+    quote_client = create_client_for_tenant(db_session, tenant)
+    product = create_product_for_tenant(db_session, tenant)
+
+    payload = create_quote_payload(
+        quote_client.id,
+        discount_amount="0.00",
+        tax_amount="0.00",
+        items=[
+            {
+                "product_id": str(product.id),
+                "quantity": "10",
+                "unit_price": "2.30",
+                "position": 0,
+            }
+        ],
+    )
+
+    with client:
+        created = client.post(
+            "/api/v1/quotes/",
+            json=payload,
+        )
+
+        assert created.status_code == 201
+
+        original = created.json()
+        original_item = original["items"][0]
+
+        # Change the catalog after creating the original quote.
+        product.name = "Novo nome"
+        product.sale_price = Decimal("9.99")
+        product.is_active = False
+        db_session.flush()
+
+        response = client.post(
+            f"/api/v1/quotes/{original['id']}/duplicate",
+        )
+
+    assert response.status_code == 201
+
+    duplicated = response.json()
+    duplicated_item = duplicated["items"][0]
+
+    assert duplicated["id"] != original["id"]
+    assert duplicated["status"] == "draft"
+
+    assert duplicated_item["product_id"] == str(product.id)
+    assert duplicated_item["name"] == original_item["name"]
+    assert duplicated_item["description"] == original_item["description"]
+    assert duplicated_item["unit"] == original_item["unit"]
+    assert duplicated_item["quantity"] == original_item["quantity"]
+    assert duplicated_item["unit_price"] == original_item["unit_price"]
+    assert duplicated_item["total_price"] == original_item["total_price"]
+
+    assert duplicated["subtotal"] == original["subtotal"]
+    assert duplicated["total_amount"] == original["total_amount"]

@@ -1,3 +1,4 @@
+
 import re
 
 from decimal import Decimal, ROUND_HALF_UP
@@ -5,17 +6,17 @@ from typing import Any
 from uuid import UUID
 
 from sqlalchemy import select
-from app.models.tenant import Tenant
-
 from sqlalchemy.orm import Session
 
 from app.models.client import Client
 from app.models.event import Event
+from app.models.product import Product
 from app.models.quote import Quote, QuoteStatus
 from app.models.quote_item import QuoteItem
 from app.models.tenant import Tenant
 from app.repositories import clients as client_repository
 from app.repositories import events as event_repository
+from app.repositories import products as product_repository
 from app.repositories import quotes as quote_repository
 
 
@@ -28,6 +29,10 @@ class QuoteClientNotFoundError(Exception):
 
 
 class QuoteEventNotFoundError(Exception):
+    pass
+
+
+class QuoteProductNotFoundError(Exception):
     pass
 
 
@@ -109,6 +114,75 @@ def _validate_event(
     return event
 
 
+def _resolve_items(
+    db: Session,
+    *,
+    items: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    resolved_items = []
+
+    for item in items:
+        resolved = item.copy()
+        product_id = resolved.get("product_id")
+
+        if product_id is not None:
+            product = product_repository.get_product_by_id(
+                db,
+                product_id=product_id,
+            )
+
+            if product is None:
+                raise QuoteProductNotFoundError("Product not found.")
+
+            if not product.is_active:
+                raise InvalidQuoteDataError(
+                    "Archived products cannot be added to new quotes."
+                )
+
+            name = resolved.get("name") or product.name
+            description = resolved.get("description") or product.description
+            unit = resolved.get("unit") or product.unit
+
+            unit_price = resolved.get("unit_price")
+            if unit_price is None:
+                unit_price = product.sale_price
+
+        else:
+            name = resolved.get("name")
+            description = resolved.get("description")
+            unit = resolved.get("unit")
+            unit_price = resolved.get("unit_price")
+
+            if name is None:
+                raise InvalidQuoteDataError(
+                    "Item name is required when no catalog product is selected."
+                )
+
+            if unit_price is None:
+                raise InvalidQuoteDataError(
+                    "Unit price is required when no catalog product is selected."
+                )
+
+        if not name or not str(name).strip():
+            raise InvalidQuoteDataError("Item name cannot be empty.")
+
+        if unit_price is None:
+            raise InvalidQuoteDataError("Item unit price is required.")
+
+        resolved_items.append(
+            {
+                **resolved,
+                "product_id": product_id,
+                "name": str(name).strip(),
+                "description": description,
+                "unit": getattr(unit, "value", unit),
+                "unit_price": unit_price,
+            }
+        )
+
+    return resolved_items
+
+
 def _generate_quote_number(db: Session) -> str:
     tenant_id = db.tenant_id
 
@@ -135,12 +209,13 @@ def _generate_quote_number(db: Session) -> str:
     return f"Q-{highest_number + 1:06d}"
 
 
-
 def _build_items(items: list[dict[str, Any]]) -> list[QuoteItem]:
     return [
         QuoteItem(
+            product_id=item.get("product_id"),
             name=item["name"],
             description=item.get("description"),
+            unit=item.get("unit"),
             quantity=item["quantity"],
             unit_price=item["unit_price"],
             total_price=_money(
@@ -191,16 +266,23 @@ def create_quote(
     *,
     data: dict[str, Any],
 ) -> Quote:
+    data = data.copy()
+
     try:
         client_id = data["client_id"]
         _validate_client(db, client_id=client_id)
+
         _validate_event(
             db,
             event_id=data.get("event_id"),
             client_id=client_id,
         )
 
-        items_data = data.pop("items")
+        items_data = _resolve_items(
+            db,
+            items=data.pop("items"),
+        )
+
         discount = data.get("discount_amount", Decimal("0"))
         tax = data.get("tax_amount", Decimal("0"))
 
@@ -231,6 +313,8 @@ def update_quote(
     quote_id: UUID,
     data: dict[str, Any],
 ) -> Quote:
+    data = data.copy()
+
     try:
         quote = get_quote(db, quote_id=quote_id)
 
@@ -257,6 +341,11 @@ def update_quote(
         items_data = data.pop("items", None)
 
         if items_data is not None:
+            items_data = _resolve_items(
+                db,
+                items=items_data,
+            )
+
             quote.items.clear()
             quote.items.extend(_build_items(items_data))
 

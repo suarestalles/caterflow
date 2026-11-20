@@ -132,3 +132,15 @@ class Product(Abstract, TenantScoped):
     )
 
     tenant = relationship("Tenant", back_populates="products")
+
+    quote_items = relationship(
+        "QuoteItem",
+        back_populates="product",
+        primaryjoin=(
+            "and_("
+            "foreign(QuoteItem.product_id) == Product.id, "
+            "QuoteItem.tenant_id == Product.tenant_id"
+            ")"
+        ),
+        foreign_keys="QuoteItem.product_id",
+    )

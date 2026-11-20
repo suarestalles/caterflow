@@ -110,8 +110,10 @@ def duplicate_quote(
         total_amount=original.total_amount,
         items=[
             QuoteItem(
+                product_id=item.product_id,
                 name=item.name,
                 description=item.description,
+                unit=item.unit,
                 quantity=item.quantity,
                 unit_price=item.unit_price,
                 total_price=item.total_price,

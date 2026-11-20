@@ -1,3 +1,4 @@
+
 from decimal import Decimal
 from uuid import UUID
 
@@ -25,6 +26,12 @@ class QuoteItem(Abstract, TenantScoped):
             name="fk_quote_items_tenant_quote",
             ondelete="CASCADE",
         ),
+        ForeignKeyConstraint(
+            ["tenant_id", "product_id"],
+            ["products.tenant_id", "products.id"],
+            name="fk_quote_items_tenant_product",
+            ondelete="RESTRICT",
+        ),
         CheckConstraint(
             "quantity > 0",
             name="quote_item_quantity_positive",
@@ -40,9 +47,11 @@ class QuoteItem(Abstract, TenantScoped):
     )
 
     quote_id: Mapped[UUID] = mapped_column(nullable=False)
+    product_id: Mapped[UUID | None] = mapped_column(nullable=True)
 
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    unit: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
     quantity: Mapped[Decimal] = mapped_column(
         Numeric(10, 2),
@@ -71,6 +80,18 @@ class QuoteItem(Abstract, TenantScoped):
             (Quote.id == foreign(QuoteItem.quote_id))
             & (Quote.tenant_id == QuoteItem.tenant_id)
         ),
+    )
+
+    product = relationship(
+        "Product",
+        back_populates="quote_items",
+        primaryjoin=(
+            "and_("
+            "foreign(QuoteItem.product_id) == Product.id, "
+            "QuoteItem.tenant_id == Product.tenant_id"
+            ")"
+        ),
+        foreign_keys="QuoteItem.product_id",
     )
 
 

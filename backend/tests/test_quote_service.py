@@ -1,4 +1,5 @@
 
+from decimal import Decimal
 from uuid import uuid4
 
 import pytest
@@ -6,12 +7,14 @@ from sqlalchemy.orm import Session
 
 from app.db.tenant_session import TenantSession
 from app.models.client import Client
-from app.models.quote import Quote, QuoteStatus
+from app.models.product import Product, ProductType
+from app.models.quote import QuoteStatus
 from app.models.tenant import Tenant
 from app.services.quotes import (
     InvalidQuoteDataError,
     QuoteClientNotFoundError,
     QuoteNotFoundError,
+    QuoteProductNotFoundError,
     create_quote,
     duplicate_quote,
     get_quote,
@@ -42,6 +45,25 @@ def create_tenant_and_client(db_session: Session):
     db_session.flush()
 
     return tenant, client
+
+def create_product(db_session, tenant_id, **overrides):
+    data = {
+        "tenant_id": tenant_id,
+        "name": "Mini sanduíche",
+        "description": "Mini sanduíche natural",
+        "type": ProductType.PRODUCT.value,
+        "unit": "unit",
+        "sku": None,
+        "sale_price": Decimal("2.50"),
+        "cost_price": Decimal("1.20"),
+        **overrides,
+    }
+
+    product = Product(**data)
+    db_session.add(product)
+    db_session.flush()
+
+    return product
 
 
 def quote_data(client_id, **overrides):
@@ -291,5 +313,274 @@ def test_duplicate_quote_does_not_change_original_items(db_session):
             (item.name, item.quantity, item.unit_price)
             for item in original_after.items
         ] == original_items
+    finally:
+        db.close()
+
+
+def test_create_quote_with_catalog_product(db_session):
+    tenant, client = create_tenant_and_client(db_session)
+
+    product = create_product(db_session, tenant.id)
+
+    db = create_tenant_session(db_session, tenant.id)
+
+    try:
+        quote = create_quote(
+            db,
+            data=quote_data(
+                client.id,
+                items=[
+                    {
+                        "product_id": product.id,
+                        "quantity": "10",
+                        "position": 0,
+                    }
+                ],
+            ),
+        )
+
+        item = quote.items[0]
+
+        assert item.product_id == product.id
+        assert item.name == "Mini sanduíche"
+        assert item.description == "Mini sanduíche natural"
+        assert item.unit == "unit"
+        assert item.quantity == 10
+        assert item.unit_price == Decimal("2.50")
+        assert item.total_price == Decimal("25.00")
+        assert quote.subtotal == Decimal("25.00")
+
+    finally:
+        db.close()
+
+
+def test_create_quote_with_negotiated_product_price(db_session):
+    tenant, client = create_tenant_and_client(db_session)
+
+    product = create_product(db_session, tenant.id)
+
+    db = create_tenant_session(db_session, tenant.id)
+
+    try:
+        quote = create_quote(
+            db,
+            data=quote_data(
+                client.id,
+                items=[
+                    {
+                        "product_id": product.id,
+                        "quantity": "10",
+                        "unit_price": "2.30",
+                        "position": 0,
+                    }
+                ],
+            ),
+        )
+
+        item = quote.items[0]
+
+        assert item.product_id == product.id
+        assert item.unit_price == Decimal("2.30")
+        assert item.total_price == Decimal("23.00")
+        assert quote.subtotal == Decimal("23.00")
+
+        # The catalog price remains unchanged.
+        assert product.sale_price == Decimal("2.50")
+
+    finally:
+        db.close()
+
+
+def test_create_quote_rejects_product_from_another_tenant(db_session):
+    tenant, client = create_tenant_and_client(db_session)
+    other_tenant = Tenant(name="Other Tenant")
+    db_session.add(other_tenant)
+    db_session.flush()
+
+    product = create_product(db_session, other_tenant.id)
+
+    db = create_tenant_session(db_session, tenant.id)
+
+    try:
+        with pytest.raises(QuoteProductNotFoundError):
+            create_quote(
+                db,
+                data=quote_data(
+                    client.id,
+                    items=[
+                        {
+                            "product_id": product.id,
+                            "quantity": "2",
+                            "position": 0,
+                        }
+                    ],
+                ),
+            )
+
+    finally:
+        db.close()
+
+
+def test_create_quote_rejects_archived_product(db_session):
+    tenant, client = create_tenant_and_client(db_session)
+
+    product = create_product(
+        db_session,
+        tenant.id,
+        is_active=False,
+    )
+
+    db = create_tenant_session(db_session, tenant.id)
+
+    try:
+        with pytest.raises(InvalidQuoteDataError):
+            create_quote(
+                db,
+                data=quote_data(
+                    client.id,
+                    items=[
+                        {
+                            "product_id": product.id,
+                            "quantity": "2",
+                            "position": 0,
+                        }
+                    ],
+                ),
+            )
+
+    finally:
+        db.close()
+
+
+def test_quote_preserves_product_snapshot_after_catalog_update(db_session):
+    tenant, client = create_tenant_and_client(db_session)
+
+    product = create_product(db_session, tenant.id)
+
+    db = create_tenant_session(db_session, tenant.id)
+
+    try:
+        quote = create_quote(
+            db,
+            data=quote_data(
+                client.id,
+                items=[
+                    {
+                        "product_id": product.id,
+                        "quantity": "10",
+                        "position": 0,
+                    }
+                ],
+            ),
+        )
+
+        product.name = "Mini sanduíche atualizado"
+        product.description = "Nova descrição"
+        product.unit = "package"
+        product.sale_price = Decimal("9.99")
+
+        db_session.flush()
+
+        updated_quote = get_quote(db, quote_id=quote.id)
+        item = updated_quote.items[0]
+
+        assert item.product_id == product.id
+        assert item.name == "Mini sanduíche"
+        assert item.description == "Mini sanduíche natural"
+        assert item.unit == "unit"
+        assert item.unit_price == Decimal("2.50")
+        assert item.total_price == Decimal("25.00")
+
+    finally:
+        db.close()
+
+
+def test_update_quote_replaces_items_with_catalog_product(db_session):
+    tenant, client = create_tenant_and_client(db_session)
+
+    product = create_product(db_session, tenant.id)
+
+    db = create_tenant_session(db_session, tenant.id)
+
+    try:
+        quote = create_quote(db, data=quote_data(client.id))
+
+        updated = update_quote(
+            db,
+            quote_id=quote.id,
+            data={
+                "items": [
+                    {
+                        "product_id": product.id,
+                        "quantity": "4",
+                        "position": 0,
+                    }
+                ],
+                "discount_amount": "0.00",
+            },
+        )
+
+        assert len(updated.items) == 1
+        assert updated.items[0].product_id == product.id
+        assert updated.items[0].name == "Mini sanduíche"
+        assert updated.items[0].unit == "unit"
+        assert updated.items[0].unit_price == Decimal("2.50")
+        assert updated.items[0].total_price == Decimal("10.00")
+        assert updated.subtotal == Decimal("10.00")
+
+    finally:
+        db.close()
+
+
+def test_duplicate_quote_preserves_catalog_product_snapshot(db_session):
+    tenant, client = create_tenant_and_client(db_session)
+
+    product = create_product(db_session, tenant.id)
+
+    db = create_tenant_session(db_session, tenant.id)
+
+    try:
+        original = create_quote(
+            db,
+            data=quote_data(
+                client.id,
+                items=[
+                    {
+                        "product_id": product.id,
+                        "quantity": "10",
+                        "unit_price": "2.30",
+                        "position": 0,
+                    }
+                ],
+            ),
+        )
+
+        original_item = original.items[0]
+
+        product.name = "Novo nome"
+        product.sale_price = Decimal("9.99")
+        product.is_active = False
+        db_session.flush()
+
+        duplicated = duplicate_quote(
+            db,
+            quote_id=original.id,
+        )
+
+        duplicated_item = duplicated.items[0]
+
+        assert duplicated.id != original.id
+        assert duplicated.status == QuoteStatus.DRAFT
+        assert duplicated_item.product_id == product.id
+        assert duplicated_item.name == original_item.name
+        assert duplicated_item.description == original_item.description
+        assert duplicated_item.unit == original_item.unit
+        assert duplicated_item.quantity == original_item.quantity
+        assert duplicated_item.unit_price == original_item.unit_price
+        assert duplicated_item.total_price == original_item.total_price
+
+        assert duplicated.subtotal == original.subtotal
+        assert duplicated.total_amount == original.total_amount
+
     finally:
         db.close()

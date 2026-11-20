@@ -18,6 +18,7 @@ from app.services.quotes import (
     QuoteClientNotFoundError,
     QuoteEventNotFoundError,
     QuoteNotFoundError,
+    QuoteProductNotFoundError,
 )
 
 router = APIRouter(tags=["Quotes"])
@@ -80,6 +81,11 @@ def create_quote(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(exc),
         ) from exc
+    except QuoteProductNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
     except InvalidQuoteDataError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
@@ -132,6 +138,11 @@ def update_quote(
             detail=str(exc),
         ) from exc
     except QuoteEventNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except QuoteProductNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(exc),
