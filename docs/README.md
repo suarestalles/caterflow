@@ -1,18 +1,15 @@
-# CaterFlow Documentation
+CaterFlow Documentation
+Project: CaterFlow
+Document: Documentation Index
+Version: 0.2
+Status: Implementation-aligned documentation index
+Last updated: November 2026
+Welcome to the technical and product documentation for CaterFlow.
 
-Welcome to the official technical and product documentation for CaterFlow.
+CaterFlow is a planned cloud-based, multi-tenant SaaS platform for catering companies. Its intended scope includes customer and catalog management, quotations, events, workforce, payments, expenses, and financial reporting.
 
-CaterFlow is a cloud-based, multi-tenant SaaS platform designed to help catering companies manage their operations, including customers, quotations, events, workforce, payments, expenses, and financial performance.
-
-This directory contains the product specifications, business rules, architecture decisions, development standards, and operational guidelines that define the project.
-
----
-
-## 1. Documentation Structure
-
-The documentation is organized into four main areas:
-
-```text
+This documentation describes both the approved product direction and the current implementation. A feature described as planned or specified must not be assumed to be implemented. The implementation status in the relevant documents is authoritative for that distinction.
+1. Documentation Structure
 docs/
 ├── README.md
 │
@@ -38,227 +35,160 @@ docs/
 │
 └── adr/
     └── README.md
-```
+The tree represents the documentation structure. Individual documents may be expanded as the project evolves.
+2. Product Documentation
+Product documents describe what CaterFlow is intended to do, who it serves, and the business rules that govern its workflows.
+Document	Description
+[PRD.md](product/PRD.md)	Product vision, objectives, target users, requirements, constraints, and success metrics.
+[MVP_SCOPE.md](product/MVP_SCOPE.md)	MVP priorities, included capabilities, exclusions, and acceptance criteria, distinguishing implemented functionality from remaining work.
+[USER_FLOWS.md](product/USER_FLOWS.md)	User journeys and operational workflows, with their implementation status.
+[BUSINESS_RULES.md](product/BUSINESS_RULES.md)	Business constraints, financial rules, operational behavior, and domain requirements.
 
----
 
-## 2. Product Documentation
-
-The product documentation describes what CaterFlow should do and why.
-
-| Document | Description |
-|---|---|
-| [PRD.md](product/PRD.md) | Product vision, objectives, target users, requirements, constraints, and success metrics. |
-| [MVP_SCOPE.md](product/MVP_SCOPE.md) | Features included in the MVP, priorities, exclusions, and acceptance criteria. |
-| [USER_FLOWS.md](product/USER_FLOWS.md) | Main user journeys and operational workflows. |
-| [BUSINESS_RULES.md](product/BUSINESS_RULES.md) | Business constraints, financial rules, operational behavior, and domain requirements. |
-
-### Recommended Reading Order
-
+Recommended reading order
 1. Product Requirements Document.
 2. MVP Scope.
 3. User Flows.
 4. Business Rules.
+3. Architecture Documentation
+Architecture documents describe the system structure, security boundaries, persistence model, and infrastructure abstractions.
+Document	Description
+[ARCHITECTURE.md](architecture/ARCHITECTURE.md)	Overall system architecture, technology stack, backend modules, and component responsibilities.
+[MULTI_TENANCY.md](architecture/MULTI_TENANCY.md)	Tenant context, data ownership, tenant isolation, and cross-tenant protection.
+[AUTHENTICATION.md](architecture/AUTHENTICATION.md)	Authentication, JWT lifecycle, sessions, memberships, roles, and permissions.
+[DATABASE.md](architecture/DATABASE.md)	Database conventions, implemented entities, relationships, constraints, and migrations.
+[STORAGE.md](architecture/STORAGE.md)	File storage abstraction, uploads, downloads, and file security requirements.
+[SECURITY.md](architecture/SECURITY.md)	Security requirements, threat considerations, data protection, and production safeguards.
 
----
 
-## 3. Architecture Documentation
-
-The architecture documentation describes how the system is structured and how its technical components interact.
-
-| Document | Description |
-|---|---|
-| [ARCHITECTURE.md](architecture/ARCHITECTURE.md) | Overall system architecture, technology stack, modules, and communication patterns. |
-| [MULTI_TENANCY.md](architecture/MULTI_TENANCY.md) | Tenant isolation, tenant context, ownership, and multi-tenant security requirements. |
-| [AUTHENTICATION.md](architecture/AUTHENTICATION.md) | Authentication, sessions, JWT, password security, roles, and permissions. |
-| [DATABASE.md](architecture/DATABASE.md) | Database conventions, entities, relationships, constraints, and migrations. |
-| [STORAGE.md](architecture/STORAGE.md) | File storage abstraction, uploads, downloads, and file security. |
-| [SECURITY.md](architecture/SECURITY.md) | Security requirements, threat model, data protection, and production safeguards. |
-
-### Recommended Reading Order
-
+Recommended reading order
 1. System Architecture.
 2. Multi-Tenancy.
 3. Authentication.
 4. Database Design.
 5. Storage Strategy.
 6. Security Requirements.
+4. Development Documentation
+Development documents define the implementation workflow, quality practices, project milestones, and operational procedures.
+Document	Description
+[ROADMAP.md](development/ROADMAP.md)	Development milestones, dependencies, deliverables, and implementation progress.
+[DEVELOPMENT_GUIDELINES.md](development/DEVELOPMENT_GUIDELINES.md)	Coding standards, project organization, implementation patterns, and Git workflow.
+[TESTING.md](development/TESTING.md)	Testing strategy, current test infrastructure, quality requirements, and release criteria.
+[DEPLOYMENT.md](development/DEPLOYMENT.md)	Environment configuration, infrastructure, CI/CD, deployment, backups, and recovery.
 
----
 
-## 4. Development Documentation
-
-The development documentation defines how CaterFlow should be implemented, tested, maintained, and deployed.
-
-| Document | Description |
-|---|---|
-| [ROADMAP.md](development/ROADMAP.md) | Development milestones, dependencies, deliverables, and implementation priorities. |
-| [DEVELOPMENT_GUIDELINES.md](development/DEVELOPMENT_GUIDELINES.md) | Coding standards, project organization, implementation patterns, and Git workflow. |
-| [TESTING.md](development/TESTING.md) | Testing strategy, quality requirements, test types, and release criteria. |
-| [DEPLOYMENT.md](development/DEPLOYMENT.md) | Environment configuration, infrastructure, CI/CD, deployment, backups, and recovery. |
-
-### Recommended Reading Order
-
+Recommended reading order
 1. Development Roadmap.
 2. Development Guidelines.
 3. Testing Strategy.
 4. Deployment Strategy.
+5. Architecture Decision Records
+The adr/ directory contains Architecture Decision Records (ADRs).
 
----
-
-## 5. Architecture Decision Records
-
-The `adr/` directory contains Architecture Decision Records (ADRs).
-
-ADRs document important technical decisions, including:
-
-- The context behind a decision.
+ADRs capture significant technical decisions and their context, including:
+- The problem or context behind a decision.
 - The alternatives considered.
-- The selected approach.
-- The reasons for selecting it.
-- The consequences and trade-offs.
+- The selected approach and rationale.
+- Consequences, limitations, and trade-offs.
+- Whether a decision supersedes an earlier ADR.
+Create an ADR when a significant architectural decision is made or an existing decision is intentionally changed. See [README.md](adr/README.md) for the process and template.
+6. Project Baseline
+The following table summarizes the current technical direction. It does not imply that every listed product capability or infrastructure component has already been delivered.
+Area	Current baseline
+Product model	Multi-tenant SaaS
+Initial market	Spain
+Intended application languages	Portuguese, Spanish, English
+Hosting model	Cloud SaaS target
+Initial default currency	EUR
+Initial default timezone	Europe/Madrid
+Backend	Python + FastAPI
+Frontend direction	Next.js + React + TypeScript
+UI direction	Tailwind CSS + shadcn/ui
+Database	PostgreSQL, shared database and schema
+ORM	SQLAlchemy 2.x
+Migrations	Alembic
+API style	Versioned REST API under /api/v1
+Authentication	JWT-based authentication
+Authorization	Tenant-scoped RBAC using permission codes
+Architecture	Modular monolith
+Tenant isolation	Application-level enforcement, tenant-aware ORM session behavior, and composite foreign keys where applicable
+File storage	Storage abstraction; local development storage and production object storage are planned
+Backend testing	Pytest with a dedicated PostgreSQL test database
+Local orchestration	Docker Compose where appropriate
 
-An ADR should be created whenever a significant architectural decision is made or an existing decision is intentionally changed.
 
-See [adr/README.md](adr/README.md) for the ADR process and format.
+Important architecture status
+- PostgreSQL Row-Level Security (RLS) is deferred. Current tenant isolation is enforced at the application/backend level; RLS must not be described as enabled.
+- Production object storage, deployment provider, and production infrastructure remain subject to the deployment plan.
+- The application is being developed as a modular monolith. Microservices are not part of the initial architecture.
+- The backend currently includes authentication/tenant membership/RBAC foundations and the Clients, Events, Products, Product Categories, and Quotes modules. See the Roadmap and the relevant module documentation for precise scope and status.
+7. Documentation Standards
+7.1 Language
+Technical documentation must be written in English to support international collaboration. The application is intended to support Portuguese, Spanish, and English.
+7.2 Consistency
+Product, architecture, and development documents must remain consistent. When a requirement or implementation decision changes, review all documents affected by that change.
+7.3 Versioning and status
+Documents should identify their title, project, version, status, and last-updated date where appropriate. Version numbers describe document revisions; they do not indicate implementation completion.
 
----
-
-## 6. Project Baseline
-
-The following decisions currently define the CaterFlow project.
-
-| Area | Current Decision |
-|---|---|
-| Product model | Multi-tenant SaaS |
-| Initial market | Spain |
-| Initial languages | Portuguese, Spanish, English |
-| Hosting model | Cloud |
-| Currency | EUR as the initial default |
-| Default timezone | Europe/Madrid |
-| Backend | Python + FastAPI |
-| Frontend | Next.js + TypeScript |
-| UI | Tailwind CSS + shadcn/ui |
-| Database | PostgreSQL |
-| ORM | SQLAlchemy 2.x |
-| Migrations | Alembic |
-| API style | REST, versioned under `/api/v1` |
-| Authentication | JWT-based authentication |
-| Architecture | Modular monolith |
-| File storage | Storage abstraction with local development and cloud production adapters |
-| Testing | Pytest and frontend testing tools |
-| Local orchestration | Docker Compose |
-
-These decisions represent the current project baseline. Changes must be documented when they materially affect architecture, scope, or implementation.
-
----
-
-## 7. Documentation Standards
-
-All project documentation should follow these standards:
-
-### 7.1 Language
-
-Technical documentation must be written in English to support international collaboration.
-
-The application itself must support Portuguese, Spanish, and English.
-
-### 7.2 Consistency
-
-Documentation must remain consistent across product, architecture, and development specifications.
-
-If a business rule changes, all affected documents must be reviewed.
-
-### 7.3 Versioning
-
-Documents should include:
-
-- Document title.
-- Project name.
-- Version.
-- Status.
-
-The initial specification version is `0.1`.
-
-### 7.4 Open Decisions
-
-Unresolved technical or business decisions must be explicitly identified as open.
-
-Assumptions must not silently become implementation requirements.
-
-### 7.5 Updates
-
-Documentation must be updated when:
-
-- Requirements change.
-- New features are introduced.
-- Architectural decisions are approved.
+Use explicit status language such as:
+- Implemented: delivered in the codebase and supported by relevant tests.
+- Partially implemented: only part of the documented capability is delivered.
+- Planned: intended but not yet implemented.
+- Open decision: requires a decision before implementation or release.
+- Deferred: intentionally postponed; do not implement unless the decision is revisited.
+7.4 Open decisions and assumptions
+Unresolved technical or business decisions must be identified as open. Assumptions must not silently become implementation requirements.
+7.5 Updates
+Documentation must be reviewed when:
+- Requirements or acceptance criteria change.
+- A feature is introduced, modified, or deferred.
+- An architectural or security decision is approved or changed.
 - Business rules change.
-- Development standards evolve.
-- Deployment procedures change.
+- Development or testing standards evolve.
+- Deployment or operational procedures change.
+Documentation should describe the actual approved system and clearly distinguish it from the intended future design.
+8. Implementation Reference
+Use the following documents as the starting point when implementing a feature. Consult additional documents whenever the change crosses module, security, data, or operational boundaries.
+Implementation area	Primary references
+User registration and login	[AUTHENTICATION.md](architecture/AUTHENTICATION.md), [MULTI_TENANCY.md](architecture/MULTI_TENANCY.md)
+Tenant configuration	[MULTI_TENANCY.md](architecture/MULTI_TENANCY.md), [BUSINESS_RULES.md](product/BUSINESS_RULES.md)
+Clients	[MVP_SCOPE.md](product/MVP_SCOPE.md), [USER_FLOWS.md](product/USER_FLOWS.md), [DATABASE.md](architecture/DATABASE.md)
+Products and product categories	[BUSINESS_RULES.md](product/BUSINESS_RULES.md), [DATABASE.md](architecture/DATABASE.md)
+Quotes and quote items	[BUSINESS_RULES.md](product/BUSINESS_RULES.md), [USER_FLOWS.md](product/USER_FLOWS.md), [DATABASE.md](architecture/DATABASE.md)
+Events	[USER_FLOWS.md](product/USER_FLOWS.md), [BUSINESS_RULES.md](product/BUSINESS_RULES.md), [DATABASE.md](architecture/DATABASE.md)
+Workforce	[BUSINESS_RULES.md](product/BUSINESS_RULES.md), [USER_FLOWS.md](product/USER_FLOWS.md)
+Payments and expenses	[BUSINESS_RULES.md](product/BUSINESS_RULES.md), [DATABASE.md](architecture/DATABASE.md)
+Dashboard and reports	[PRD.md](product/PRD.md), [MVP_SCOPE.md](product/MVP_SCOPE.md)
+File uploads and generated documents	[STORAGE.md](architecture/STORAGE.md), [DEPLOYMENT.md](development/DEPLOYMENT.md)
+API and backend implementation	[ARCHITECTURE.md](architecture/ARCHITECTURE.md), [DEVELOPMENT_GUIDELINES.md](development/DEVELOPMENT_GUIDELINES.md)
+Automated tests	[TESTING.md](development/TESTING.md)
+Production release	[SECURITY.md](architecture/SECURITY.md), [DEPLOYMENT.md](development/DEPLOYMENT.md)
 
-Documentation should describe the actual approved system, not an outdated intended design.
 
----
-
-## 8. Implementation Reference
-
-Before implementing a feature, developers should consult the relevant documents.
-
-| Implementation Area | Primary References |
-|---|---|
-| User registration and login | AUTHENTICATION.md, MULTI_TENANCY.md |
-| Tenant configuration | MULTI_TENANCY.md, BUSINESS_RULES.md |
-| Customers | MVP_SCOPE.md, USER_FLOWS.md, DATABASE.md |
-| Catalog and menus | BUSINESS_RULES.md, DATABASE.md |
-| Pricing and quotations | BUSINESS_RULES.md, USER_FLOWS.md |
-| Event management | USER_FLOWS.md, BUSINESS_RULES.md |
-| Employee management | USER_FLOWS.md, BUSINESS_RULES.md |
-| Payments and expenses | BUSINESS_RULES.md, DATABASE.md |
-| Dashboard and reports | PRD.md, MVP_SCOPE.md |
-| File uploads and PDFs | STORAGE.md, DEPLOYMENT.md |
-| API implementation | ARCHITECTURE.md, DEVELOPMENT_GUIDELINES.md |
-| Automated tests | TESTING.md |
-| Production release | SECURITY.md, DEPLOYMENT.md |
-
----
-
-## 9. Documentation Governance
-
-The documentation is the reference for implementation decisions.
-
-The following rules apply:
-
-1. Product requirements must be approved before implementation.
+9. Documentation Governance
+The documentation is the shared reference for product and implementation decisions.
+1. Product requirements and acceptance criteria should be clarified before implementing a feature.
 2. Business rules must be explicit before related financial or operational logic is implemented.
-3. Architectural changes must be documented.
-4. Significant decisions should have an ADR.
-5. Security and tenant isolation requirements must not be weakened without explicit review.
-6. Implementation must not silently contradict approved documentation.
-7. Documentation updates should accompany relevant code changes.
+3. Architectural and security changes must be documented.
+4. Significant technical decisions should have an ADR.
+5. Tenant isolation and authorization requirements must not be weakened to make implementation or tests pass.
+6. Code must not silently contradict an approved decision. If implementation reveals that a decision must change, update the relevant documentation and record the decision where appropriate.
+7. Documentation updates should accompany the code changes they describe.
+8. Tests must validate critical business rules and security boundaries; documentation alone is not evidence that a feature is implemented.
+10. Current Documentation and Implementation Status
+The documentation set contains product, architecture, and development specifications. The implementation is progressing incrementally; the presence of a specification does not mean the corresponding module is complete.
 
----
+The current backend baseline includes:
+- Authentication, tenant membership, and permission-based RBAC foundations.
+- Tenant-scoped persistence and application-level tenant isolation.
+- Clients management.
+- Events management and status transitions.
+- Products and product categories.
+- Quotes and quote items, including optional product catalog links and commercial snapshots.
+- Alembic-managed schema migrations.
+- A dedicated PostgreSQL test database and automated backend tests.
+The following capabilities remain future work or require further implementation before they can be considered delivered: full quotation versioning and approval workflow, conversion of approved quotes into events, PDF generation, payments, workforce management, expenses, reporting, production storage integration, and production deployment. Refer to [ROADMAP.md](development/ROADMAP.md), [MVP_SCOPE.md](product/MVP_SCOPE.md), and [USER_FLOWS.md](product/USER_FLOWS.md) for the current status and dependencies.
 
-## 10. Current Documentation Status
-
-The initial product, architecture, and development specifications have been drafted.
-
-The next phase is a documentation consistency review to identify:
-
-- Contradictory requirements.
-- Missing business rules.
-- Unresolved architectural decisions.
-- Incomplete acceptance criteria.
-- Technical implementation dependencies.
-
-Implementation should begin only after this review establishes a sufficiently consistent baseline.
-
----
-
-## 11. Guiding Principle
-
-CaterFlow should be developed as a maintainable, secure, and scalable SaaS product.
-
-The documentation exists to reduce ambiguity, guide implementation, preserve technical decisions, and support future collaboration.
-
-It should evolve together with the product.
+The next development work should follow the roadmap and maintain consistency between code, tests, and documentation. A feature should be marked implemented only when its agreed scope is delivered and validated.
+11. Guiding Principle
+CaterFlow should be developed as a maintainable, secure, and scalable SaaS product. This documentation exists to reduce ambiguity, guide implementation, preserve technical decisions, and support future collaboration. It must evolve alongside the product and accurately distinguish current capabilities from future plans.

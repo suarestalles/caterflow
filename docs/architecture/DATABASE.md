@@ -1,281 +1,233 @@
-# Database Architecture
-
-**Project:** CaterFlow  
-**Document version:** 0.1  
-**Status:** Initial specification  
-**Last updated:** November 2026
-
----
-
-## 1. Purpose
-
+Database Architecture
+Project: CaterFlow
+Document version: 0.2
+Status: Implementation-aligned specification
+Last updated: November 20, 2026
+1. Purpose
 This document defines the database architecture and data modeling principles for CaterFlow.
 
-It establishes:
+It records both the database structures currently implemented and the intended direction for modules that have not yet been developed.
 
+It establishes:
 - Database technology and organization.
 - Entity ownership and relationships.
 - Multi-tenant data isolation.
 - Data integrity constraints.
 - Financial data representation.
 - Historical data preservation.
-- Indexing and query optimization.
+- Indexing and query practices.
 - Migration and schema evolution practices.
-
+- The distinction between implemented entities and planned entities.
 The database must support the operational and financial requirements of a multi-tenant catering management SaaS.
 
-The model should prioritize consistency, maintainability, traceability, and the ability to evolve as new business requirements emerge.
+The model prioritizes consistency, maintainability, traceability, tenant isolation, and the ability to evolve as new business requirements emerge.
 
-## 2. Database Technology
+Implementation note: The current backend has implemented identity and access foundations, clients, events, products, product categories, quotes, quote items, and the optional relationship between quote items and catalog products. Workforce, payments, expenses, tenant settings, and audit persistence remain planned work and must not be treated as existing database tables until implemented and migrated.
+2. Database Technology
+CaterFlow uses PostgreSQL as its primary relational database.
 
-CaterFlow will use **PostgreSQL** as its primary relational database.
-
-The backend will interact with PostgreSQL through:
-
+The backend interacts with PostgreSQL through:
 - SQLAlchemy 2.x for ORM and database access.
 - Alembic for schema migrations.
 - Pydantic for request and response validation.
 - Pytest for automated database and integration tests.
-
-### 2.1 Database Organization
-
-The initial architecture will use:
-
-- One PostgreSQL database.
+The current local development environment uses PostgreSQL 17.
+2.1 Database Organization
+The current architecture uses:
+- One PostgreSQL database per environment.
 - One shared schema.
 - Multiple tenants.
-- Tenant ownership through `tenant_id`.
+- Tenant ownership through tenant_id on tenant-scoped entities.
 - Relational constraints to preserve data integrity.
-
+- Application-level tenant filtering and authorization.
 Separate databases or schemas per tenant are not part of the MVP.
 
-### 2.2 Database Design Principles
+PostgreSQL Row-Level Security (RLS) is deferred. Tenant isolation currently relies on the application database session, ORM filtering, service validation, authorization checks, and database constraints. RLS must not be described as active or relied upon by the current implementation.
+2.2 Database Design Principles
+The database follows these principles:
+1. Tenant-owned records have explicit tenant ownership.
+2. Relationships between tenant-owned entities preserve tenant boundaries.
+3. Financial values use exact decimal representation.
+4. Historical commercial records preserve their own snapshots.
+5. Referential integrity is enforced by PostgreSQL whenever practical.
+6. Business rules are enforced by the backend, not exclusively by frontend validation.
+7. Database migrations are version-controlled through Alembic.
+8. Destructive schema changes are handled carefully.
+9. Database models, API schemas, repositories, and services remain separate concerns.
+10. The schema evolves deliberately without unnecessary infrastructure complexity.
+3. Naming Conventions
+The database uses consistent naming conventions.
+Element	Convention	Current example
+Tables	Plural, snake_case	clients, events, products
+Columns	snake_case	created_at
+Primary keys	id	id
+Foreign keys	{entity}_id	client_id
+Tenant ownership	tenant_id	tenant_id
+Boolean fields	is_ or has_ prefix	is_active
+Timestamps	_at suffix	created_at
+Unique constraints	uq_ prefix	uq_roles_tenant_name
+Foreign keys	fk_ prefix	fk_quote_items_tenant_product
+Check constraints	descriptive name	quote_item_quantity_positive
+Indexes	SQLAlchemy/Alembic index names	Defined in the corresponding model or migration
 
-The database must follow these principles:
 
-1. Tenant-owned records must have an explicit owner.
-2. Relationships must preserve tenant boundaries.
-3. Financial values must use exact decimal representation.
-4. Historical business records must remain consistent.
-5. Critical changes must be traceable.
-6. Referential integrity must be enforced by the database whenever possible.
-7. Business rules must not depend exclusively on frontend validation.
-8. Database migrations must be version-controlled.
-9. Destructive schema changes must be handled carefully.
-10. The schema must support future growth without unnecessary complexity.
+All table and column names are written in English.
 
-## 3. Naming Conventions
+Constraint and index names should remain explicit and stable so that Alembic can manage schema changes predictably.
+4. Primary Keys and Identifiers
+Database entities use UUID primary keys through the shared abstract model.
 
-The database will use consistent naming conventions.
+The common Abstract model defines:
+- id: UUID primary key, generated by the application using uuid.uuid4.
+- created_at: timestamp with timezone, populated by the database.
+- updated_at: timestamp with timezone, populated by the database and updated by SQLAlchemy on modification.
+UUIDs are suitable for API resources and multi-tenant applications.
 
-| Element | Convention | Example |
-|---|---|---|
-| Tables | Plural, snake_case | `customers` |
-| Columns | snake_case | `created_at` |
-| Primary keys | `id` | `id` |
-| Foreign keys | `{entity}_id` | `customer_id` |
-| Tenant ownership | `tenant_id` | `tenant_id` |
-| Boolean fields | `is_` or `has_` prefix | `is_active` |
-| Timestamps | `_at` suffix | `created_at` |
-| Unique constraints | `uq_` prefix | `uq_customers_tenant_email` |
-| Indexes | `idx_` prefix | `idx_events_tenant_date` |
-| Foreign keys | `fk_` prefix | `fk_events_customer` |
-| Check constraints | `ck_` prefix | `ck_payments_amount_positive` |
+Identifiers are not authorization mechanisms. Every resource access must still be validated against the authenticated user, active tenant context, and required permission.
+5. Common Entity Fields
+The shared abstract model provides the following fields:
+Field	Type	Purpose
+id	UUID	Primary key
+created_at	TIMESTAMPTZ	Creation timestamp
+updated_at	TIMESTAMPTZ	Last modification timestamp
 
-All table and column names should be written in English.
 
-Database naming conventions must remain consistent across all modules.
+Tenant-owned models additionally use the TenantScoped mixin, which provides:
+Field	Type	Purpose
+tenant_id	UUID	Owning tenant
 
-## 4. Primary Keys and Identifiers
 
-Each database entity must have a unique primary key.
+Not every entity is tenant-scoped. Users, tenants, and the global permission catalog are platform-level entities. Memberships, roles, role assignments, and business entities are tenant-scoped according to their models.
+5.1 Timestamps and Dates
+Timestamp fields use timezone-aware database types. Application code must preserve timezone information when storing moments in time.
 
-The recommended identifier strategy is UUID.
+Business dates that represent calendar dates rather than exact moments use DATE where appropriate. For example, quote validity uses a date.
 
-UUIDs provide globally unique identifiers and are suitable for distributed systems, API resources, and multi-tenant applications.
+The Event model currently stores starts_at and ends_at as timezone-aware timestamps and validates that the start precedes the end. The default country on an event is ES.
 
-PostgreSQL's native UUID type should be used.
+The default company timezone is intended to be Europe/Madrid, but tenant settings and a complete company-configuration module have not yet been implemented.
 
-The backend should generate identifiers using a maintained UUID implementation.
+Event scheduling and display must continue to account for local timezone and daylight-saving transitions.
+6. Multi-Tenant Data Model
+Tenant isolation is a fundamental database and application requirement.
 
-Sequential database identifiers may still be used internally for specialized technical purposes, but public business resources should use UUID identifiers consistently.
+Every tenant-scoped entity must contain a non-null tenant_id. The backend assigns and validates tenant ownership using the authenticated tenant context. The frontend must not be trusted to determine ownership through an untrusted payload.
+6.1 Tenant Ownership
+The current ownership model is:
+Entity	Ownership	Implementation status
+users	Platform-level	Implemented
+tenants	Platform-level	Implemented
+memberships	Tenant-scoped	Implemented
+roles	Tenant-scoped	Implemented
+permissions	Platform-level definitions	Implemented
+role_permissions	Tenant-scoped assignment	Implemented
+membership_roles	Tenant-scoped assignment	Implemented
+refresh_tokens	User-associated platform record	Implemented
+clients	Tenant-scoped	Implemented
+events	Tenant-scoped	Implemented
+product_categories	Tenant-scoped	Implemented
+products	Tenant-scoped	Implemented
+quotes	Tenant-scoped	Implemented
+quote_items	Tenant-scoped	Implemented
+Employees and assignments	Tenant-scoped	Planned
+Payment schedules, installments, and payments	Tenant-scoped	Planned
+Expenses	Tenant-scoped	Planned
+Tenant settings	Tenant-associated	Planned
+Business audit records	Tenant-scoped	Planned
 
-Identifiers must not be treated as authorization mechanisms. Access must always be validated independently.
 
-## 5. Common Entity Fields
-
-Most tenant-owned entities should include a standard set of fields.
-
-| Field | Type | Purpose |
-|---|---|---|
-| id | UUID | Primary key |
-| tenant_id | UUID | Owning tenant |
-| created_at | TIMESTAMPTZ | Creation timestamp |
-| updated_at | TIMESTAMPTZ | Last modification timestamp |
-
-Not every entity requires every field.
-
-Historical records, immutable snapshots, and append-only records may have different update requirements.
-
-### 5.1 Timestamps
-
-All timestamps must be stored using PostgreSQL `TIMESTAMPTZ`.
-
-The database should store timestamps consistently in UTC.
-
-The application will convert timestamps to the tenant's configured timezone for display and business operations.
-
-The default timezone is `Europe/Madrid`.
-
-Business dates that represent calendar dates rather than moments in time should use PostgreSQL `DATE`.
-
-For example:
-
-- Event date: `DATE` when the business concept is a calendar date.
-- Event start time: a local time field when appropriate.
-- Payment received timestamp: `TIMESTAMPTZ`.
-- Record creation timestamp: `TIMESTAMPTZ`.
-
-Event scheduling must account for local timezone and daylight-saving transitions. The final event scheduling model must be defined during implementation.
-
-## 6. Multi-Tenant Data Model
-
-Tenant isolation is a fundamental database requirement.
-
-Every tenant-owned table must contain a non-null `tenant_id`.
-
-The tenant identifier must be assigned by the backend using the validated tenant context.
-
-The frontend must never determine record ownership through an untrusted payload.
-
-### 6.1 Tenant Ownership
-
-The main entity ownership structure will be:
-
-| Entity | Ownership |
-|---|---|
-| Users | Platform-level |
-| Tenants | Platform-level |
-| Tenant memberships | Tenant-scoped |
-| Roles | Tenant-scoped or platform-defined, depending on implementation |
-| Permissions | Platform-level definitions |
-| Customers | Tenant-scoped |
-| Employees | Tenant-scoped |
-| Catalog items | Tenant-scoped |
-| Menus | Tenant-scoped |
-| Quotations | Tenant-scoped |
-| Quotation versions | Tenant-scoped |
-| Events | Tenant-scoped |
-| Employee assignments | Tenant-scoped |
-| Payment schedules | Tenant-scoped |
-| Payments | Tenant-scoped |
-| Expenses | Tenant-scoped |
-| Audit records | Tenant-scoped for business operations |
-
-Platform-level authentication and operational tables must be designed separately from tenant-owned business tables.
-
-### 6.2 Tenant-Scoped Relationships
-
+The exact table names above reflect the current SQLAlchemy models. The planned entities may be refined during implementation.
+6.2 Tenant-Scoped Relationships
 Relationships between tenant-owned entities must preserve the same tenant ownership.
 
-For example:
+Current examples include:
+- An event can reference only a client from the same tenant.
+- A product can reference only a category from the same tenant.
+- A product category can reference only a parent category from the same tenant.
+- A quote can reference only a client and, when provided, an event from the same tenant.
+- A quote item can reference only a quote and, when provided, a product from the same tenant.
+- Membership-role and role-permission assignments must belong to the same tenant as their associated membership or role.
+Composite foreign keys are used where appropriate. Referenced tenant-owned tables expose a unique constraint on (tenant_id, id) so dependent tables can reference both values.
+6.3 Application-Level Tenant Isolation
+The current implementation uses TenantSession for tenant-scoped database operations.
 
-- An event can reference only a customer from the same tenant.
-- A quotation can reference only catalog items from the same tenant.
-- An employee assignment can reference only employees from the same tenant.
-- A payment must reference a financial obligation belonging to the same tenant.
+Its responsibilities include:
+- Applying tenant criteria to ORM queries through SQLAlchemy execution hooks and with_loader_criteria.
+- Validating tenant ownership during ORM flush operations.
+- Assigning tenant ownership through the unit-of-work path where applicable.
+- Restricting unsupported Core/text and bulk insert paths in tenant sessions.
+- Supporting explicitly controlled platform-level database access where required.
+Tenant database access is provided through the tenant database dependency and the database session utilities. Authentication/bootstrap operations may use the standard database session where tenant context is not yet established.
 
-The database should use composite foreign keys where appropriate.
+These protections are application-level controls. PostgreSQL RLS is not currently enabled.
+6.4 Composite Foreign Keys
+Composite foreign keys are used to prevent cross-tenant references at the database layer even if an application validation is missed.
 
-A common pattern is to define a unique constraint on `(tenant_id, id)` in the referenced table and reference both columns from dependent tables.
-
-This ensures that cross-tenant relationships cannot be created even if an application validation is missed.
-
-## 7. Core Domain Entities
-
-The database will be organized around the following business domains.
-
-### 7.1 Identity and Tenant Management
-
-Initial entities:
-
-- `users`
-- `tenants`
-- `tenant_memberships`
-- `roles`
-- `permissions`
-- `role_permissions`
-- `user_sessions`
-- `password_reset_tokens`
-- `email_verification_tokens`
-
+Examples include:
+- events(tenant_id, client_id) referencing clients(tenant_id, id).
+- products(tenant_id, category_id) referencing product_categories(tenant_id, id).
+- product_categories(tenant_id, parent_id) referencing product_categories(tenant_id, id).
+- quotes(tenant_id, client_id) referencing clients(tenant_id, id).
+- quotes(tenant_id, event_id) referencing events(tenant_id, id) when event_id is not null.
+- quote_items(tenant_id, quote_id) referencing quotes(tenant_id, id).
+- quote_items(tenant_id, product_id) referencing products(tenant_id, id) when product_id is not null.
+- membership_roles referencing memberships and roles using tenant-aware composite foreign keys.
+7. Core Domain Entities
+The database is organized around the following business domains. Each subsection distinguishes implemented structures from planned structures.
+7.1 Identity and Tenant Management
+Current entities:
+- users
+- tenants
+- memberships
+- roles
+- permissions
+- role_permissions
+- membership_roles
+- refresh_tokens
 Responsibilities:
+- User identity and password hash storage.
+- Tenant records.
+- User membership in tenants.
+- Tenant roles and membership-role assignments.
+- Global permission definitions and tenant role-permission assignments.
+- Refresh-token persistence and lifecycle support.
+The Permission catalog is global. Role records are tenant-scoped. Memberships may receive multiple roles, and effective permissions are the union of the permissions granted through those roles.
 
-- User identity.
-- Company registration.
-- Membership management.
-- Authentication sessions.
-- Role and permission management.
-- Account recovery and verification.
+Authorization is based on permission codes, not role names. The backend validates permissions for protected operations.
 
-The detailed authentication behavior is defined in `AUTHENTICATION.md`.
+Password-reset and email-verification persistence, if required, must be modeled explicitly when those workflows are implemented; they must not be assumed to exist merely because they appear in future requirements.
 
-### 7.2 Customers
+Detailed authentication behavior is defined in AUTHENTICATION.md.
+7.2 Clients
+Table: clients
+Status: Implemented
 
-Table: `customers`
+Clients represent individuals or organizations that request catering services.
 
-Customers represent individuals or organizations that request catering services.
+The current model supports:
+- Tenant ownership.
+- Individual or business client type.
+- Client name and contact details.
+- Email and phone contact information, with at least one required by the service/schema rules.
+- Address and internal notes.
+- Logical archiving through the client archive field.
+- Relationships to events and quotes.
+A client may have multiple quotes and events.
 
-Suggested fields:
+Archived clients remain available for historical consultation but cannot be selected for new commercial operations unless reactivated, according to the current service rules.
 
-| Field | Description |
-|---|---|
-| id | Customer identifier |
-| tenant_id | Owning tenant |
-| customer_type | Individual or organization |
-| name | Customer or organization name |
-| email | Contact email |
-| phone | Contact phone |
-| tax_identifier | Optional fiscal identification |
-| address | Optional primary address |
-| notes | Internal notes |
-| created_at | Creation timestamp |
-| updated_at | Last modification |
+The current implementation uses a single address representation and does not yet provide a separate normalized table for multiple contacts or multiple addresses.
+7.3 Employees and Workforce
+Status: Planned — not yet implemented
 
-Customer data must remain tenant-specific.
-
-The system should support multiple quotations and events associated with the same customer.
-
-Historical quotations and events must preserve the relevant customer information required for accurate records, even if the customer's profile changes later.
-
-### 7.3 Employees and Workforce
-
-Initial entities:
-
-- `employees`
-- `employee_assignments`
-- `employee_time_entries`
-- `compensation_rates`, if required by the final implementation.
-
+The intended domain may include:
+- employees
+- employee_assignments
+- employee_time_entries
+- Compensation data or compensation snapshots, according to the final model.
 Employees may be permanent staff or freelancers.
 
-Suggested employee attributes:
-
-| Field | Description |
-|---|---|
-| id | Employee identifier |
-| tenant_id | Owning tenant |
-| full_name | Employee name |
-| email | Optional email |
-| phone | Optional phone |
-| employment_type | Permanent or freelance |
-| is_active | Availability status |
-| notes | Internal notes |
-
-Employee assignments connect employees to events.
-
-An assignment should preserve:
-
+An assignment is expected to connect an employee to an event and preserve:
 - Event reference.
 - Employee reference.
 - Assigned role or function.
@@ -284,668 +236,408 @@ An assignment should preserve:
 - Compensation method.
 - Agreed compensation amount.
 - Assignment status.
-
-### 7.3.1 Compensation Snapshots
-
-Compensation may be calculated using:
-
-- Hourly rate.
-- Fixed amount per event.
-
-Additional methods may be introduced later.
-
-The agreed compensation must be stored as a snapshot in the employee assignment.
+7.3.1 Compensation Snapshots
+The agreed compensation should be stored as a snapshot in the relevant event assignment or compensation record.
 
 Changing an employee's current compensation rate must not modify historical assignments or previously calculated event costs.
 
-This is essential for financial accuracy.
+The exact representation of planned, calculated, and actual staff costs remains to be designed before financial reporting is implemented.
+7.4 Catalog: Products, Services, and Categories
+Current tables:
+- product_categories
+- products
+Status: Implemented
 
-### 7.4 Catalog and Menus
+CaterFlow uses one Product model for both physical products and services. The type field differentiates the two kinds of catalog entry.
 
-Initial entities:
+Current product fields include:
+Field	Purpose
+id	Product identifier
+tenant_id	Owning tenant
+category_id	Optional category reference
+name	Product or service name
+description	Optional description
+type	product or service
+unit	Standardized unit value
+sku	Optional tenant-specific SKU
+sale_price	Default sale price
+cost_price	Cost reference
+is_active	Active/archive state
+created_at	Creation timestamp
+updated_at	Last modification
 
-- `catalog_categories`
-- `catalog_items`
-- `menus`
-- `menu_items`
-- `pricing_rules`, if required by the final pricing model.
 
-Catalog items may represent:
+Prices use NUMERIC(12, 2) and Python Decimal in application calculations.
 
-- Food.
-- Drinks.
-- Service options.
-- Additional services.
-- Other configurable products or services.
+SKU uniqueness is enforced per tenant when an SKU is provided, using a partial unique index that excludes null SKU values.
 
-Suggested catalog item fields:
+The category_id is optional. When present, a composite foreign key ensures that the category belongs to the same tenant.
 
-| Field | Description |
-|---|---|
-| id | Catalog item identifier |
-| tenant_id | Owning tenant |
-| category_id | Category reference |
-| name | Item name |
-| description | Item description |
-| item_type | Food, drink, service, or other |
-| base_price | Optional default price |
-| is_active | Availability |
-| created_at | Creation timestamp |
-| updated_at | Last modification |
+The catalog currently supports logical archiving through is_active. Archived products and services cannot be selected for new quote items.
+7.4.1 Product Categories
+product_categories supports:
+- Tenant ownership.
+- Category name and optional description.
+- Optional parent_id for hierarchical categories and subcategories.
+- Logical active/inactive state.
+- Tenant-specific unique category names.
+- Composite self-referential foreign key to prevent cross-tenant parent relationships.
+A category cannot be archived while products or child categories still depend on it, according to the current service rules.
+7.4.2 Standardized Units
+Units are currently defined as a static enum in application code, not as a database lookup table.
 
-Menu composition must support reusable items and tenant-specific configurations.
+The current values are:
+- unit
+- kg
+- g
+- l
+- ml
+- package
+- person
+- hour
+- day
+- service
+The allowed unit values are also validated by a database check constraint on products.
+7.4.3 Menus and Recipe Data
+Dedicated menus, menu_items, recipe, and ingredient tables have not yet been implemented.
 
-Prices must be represented using decimal types.
+They remain future modeling work. The current product catalog must not be described as a complete menu or inventory system.
+7.5 Quotes
+Current tables:
+- quotes
+- quote_items
+Status: Implemented, including the optional catalog link
 
-Catalog changes must not silently modify previously approved quotations.
+The current Quote model represents a commercial proposal for a client. It includes tenant ownership, required client reference, optional event reference, quote number, title, description, status, validity date, monetary totals, notes, and terms.
 
-### 7.5 Quotations
+Current quote statuses include:
+- draft
+- sent
+- accepted
+- rejected
+- expired
+- cancelled
+The presence of a status value does not imply that every corresponding workflow has already been implemented. In particular, a complete approval/versioning workflow remains future work.
 
-Initial entities:
+Quote numbers are generated sequentially per tenant using a tenant-row lock during number generation.
 
-- `quotations`
-- `quotation_versions`
-- `quotation_items`
-- `quotation_approvals`
+The quote model uses composite foreign keys to ensure that its client and optional event belong to the same tenant.
+7.5.1 Quote Items
+quote_items stores the lines of a quote.
 
-A quotation represents a commercial proposal sent to a customer.
+Current fields include:
+Field	Purpose
+id	Quote item identifier
+tenant_id	Owning tenant
+quote_id	Parent quote
+product_id	Optional catalog product/service reference
+name	Item name snapshot
+description	Description snapshot
+unit	Unit snapshot; nullable for legacy/manual items
+quantity	Quantity
+unit_price	Agreed unit price snapshot
+total_price	Calculated line total
+position	Display order
+created_at / updated_at	Timestamps inherited from the abstract model
 
-A quotation should contain:
 
-- Customer reference.
-- Current quotation status.
-- Event type.
-- Expected event date.
-- Estimated number of attendees.
-- Service format.
-- Internal notes.
-- Current version reference, where applicable.
-- Creation and modification timestamps.
+quantity uses NUMERIC(10, 2). Monetary line values use NUMERIC(12, 2).
 
-### 7.5.1 Quotation Versions
+Database checks enforce positive quantity and non-negative unit and total prices.
+7.5.2 Catalog Link and Historical Snapshot
+product_id is optional so a quote item can be:
+- Linked to a product or service in the tenant catalog; or
+- Entered manually without a catalog relationship.
+The composite foreign key (tenant_id, product_id) references products(tenant_id, id) and uses ON DELETE RESTRICT.
 
-Quotation versions must preserve the commercial proposal as it existed at the time of creation.
+When an item is created from the catalog, the service copies the relevant catalog values into the quote item. The quote item retains its own name, description, unit, quantity, unit price, and total price. A negotiated unit price may differ from the current catalog sale price.
 
-A version should contain:
+Changing or archiving the catalog product later does not recalculate or overwrite the quote item snapshot. Existing quote items retain their commercial values.
 
-- Version number.
-- Quotation reference.
-- Customer and event information snapshots.
-- Menu and service descriptions.
-- Item quantities.
-- Unit prices.
-- Discounts.
-- Taxes, when applicable.
-- Total amount.
-- Payment conditions.
-- Validity period.
-- Creation timestamp.
-- Created by user.
+Quote duplication creates independent quote item records and preserves the optional product_id reference and the original snapshots. A duplicated quote therefore does not need to re-read current catalog values, including when the referenced product has subsequently been archived.
 
-A quotation version must be immutable after creation.
+The current design does not implement immutable quotation version tables or an approval snapshot table. Those are future capabilities and must be modeled explicitly if version history and formal approval are introduced.
+7.6 Events
+Table: events
+Status: Implemented as an independent event-management module
 
-If a proposal changes, a new version must be created.
+The current Event model includes:
+- Tenant ownership.
+- Required client reference.
+- Event name.
+- Timezone-aware starts_at and ends_at.
+- Guest count.
+- Event status.
+- Country, defaulting to ES.
+- Independent address and notes.
+The model enforces a tenant-aware client relationship, positive guest count, and a start timestamp earlier than the end timestamp.
 
-The previous version must remain available for historical reference.
+Current event statuses are:
+- draft
+- confirmed
+- in_progress
+- completed
+- cancelled
+The service validates event status transitions and cancellation rules.
 
-### 7.5.2 Quotation Approval
+Current quote relationship: quotes.event_id is optional and can associate a quote with an existing event from the same tenant. The current Event model does not yet implement the planned originating-quote/approved-version conversion relationship. Creating events from formally approved quotations remains future work.
 
-Approval must identify the exact version accepted by the customer.
+Workforce assignments, event expenses, payments, and event financial closure are also not yet implemented.
+7.7 Payment Management
+Status: Planned — not yet implemented
 
-The approval record should preserve:
-
-- Quotation reference.
-- Approved version reference.
-- Approval timestamp.
-- User or authorized actor responsible for recording the approval.
-- Approval method or source, when available.
-- Relevant evidence or reference, when available.
-
-Approval must not be inferred merely from a change in quotation status.
-
-The system must preserve the distinction between a quotation being sent, accepted, rejected, or expired.
-
-### 7.6 Events
-
-Table: `events`
-
-An event represents the operational execution of an approved catering service.
-
-An event should be linked to:
-
-- Its originating quotation.
-- The approved quotation version.
-- The customer.
-- Assigned employees.
-- Payment schedule.
-- Expenses.
-- Operational information.
-
-Suggested fields:
-
-| Field | Description |
-|---|---|
-| id | Event identifier |
-| tenant_id | Owning tenant |
-| quotation_id | Originating quotation |
-| approved_version_id | Approved quotation version |
-| customer_id | Customer reference |
-| title | Event name |
-| event_date | Event date |
-| start_time | Planned start time |
-| end_time | Planned end time |
-| location | Event location |
-| attendee_count | Expected attendees |
-| status | Operational status |
-| notes | Internal notes |
-| created_at | Creation timestamp |
-| updated_at | Last modification |
-
-Initial operational statuses:
-
-- Scheduled.
-- Confirmed.
-- In Preparation.
-- In Progress.
-- Completed.
-- Cancelled.
-
-Operational status must remain independent of financial status.
-
-An event may be completed while still having outstanding payments.
-
-### 7.6.1 Event Creation
-
-Converting an approved quotation into an event must be idempotent.
-
-Repeated requests to perform the conversion must not create duplicate events.
-
-The originating quotation and approved version must be preserved.
-
-The system must also retain the original commercial snapshot.
-
-### 7.7 Payment Management
-
-Initial entities:
-
-- `payment_schedules`
-- `payment_installments`
-- `payments`
-
-The payment model must distinguish between:
-
-1. The amount the customer is expected to pay.
+The intended domain may include:
+- payment_schedules
+- payment_installments
+- payments
+The model must distinguish:
+1. The amount a customer is expected to pay.
 2. The scheduled payment obligations.
 3. The amounts actually received.
-
 These are different financial concepts and must not be combined into a single field.
+7.7.1 Payment Schedule
+A payment schedule is expected to preserve the payment conditions associated with the commercial agreement, including the agreed amount, currency, installment rules, and creation timestamp.
 
-### 7.7.1 Payment Schedule
+Whether the schedule is generated at quote approval or event conversion remains an open business decision.
+7.7.2 Payment Installments
+Each installment is expected to represent an amount due on a specific date. Percentage and fixed-amount schedules must reconcile with the agreed total using explicit rounding rules.
+7.7.3 Payments Received
+Payment records are expected to represent actual receipts, support partial payments, and remain traceable. Corrections should use controlled reversals or adjustments rather than silently deleting records.
+7.8 Expenses
+Status: Planned — not yet implemented
 
-A payment schedule represents the payment conditions associated with an approved quotation.
+The intended expenses entity will represent actual costs associated with an event or another permitted tenant business activity.
 
-It should preserve:
-
-- Approved quotation version.
-- Original commercial total.
-- Payment condition snapshot.
-- Creation timestamp.
-- Currency.
-- Schedule status.
-
-The recommended approach is to generate the payment schedule when the quotation is approved.
-
-This ensures that the agreed payment conditions are preserved before event conversion.
-
-This timing remains subject to final business validation.
-
-### 7.7.2 Payment Installments
-
-Each installment represents an amount expected on a specific date.
-
-Suggested fields:
-
-| Field | Description |
-|---|---|
-| id | Installment identifier |
-| tenant_id | Owning tenant |
-| payment_schedule_id | Parent schedule |
-| installment_number | Sequence |
-| due_date | Expected payment date |
-| amount | Amount due |
-| status | Installment status |
-| created_at | Creation timestamp |
-
-Payment conditions may use percentages or fixed amounts.
-
-For percentage-based installments, the configured percentages must total exactly 100%.
-
-For fixed-amount installments, the installment totals must reconcile with the agreed amount.
-
-The final calculation and rounding rules must be implemented consistently.
-
-### 7.7.3 Payments Received
-
-Payments represent actual financial receipts.
-
-A payment record should include:
-
-- Customer or event financial reference.
-- Installment reference, when applicable.
-- Amount received.
-- Payment date.
-- Payment method.
-- External reference, when available.
-- Notes.
-- Recorded by user.
-- Creation timestamp.
-
-The model should support partial payments.
-
-Payment history must not be overwritten when a new payment is received.
-
-Corrections must be handled through traceable adjustment or reversal operations.
-
-### 7.8 Expenses
-
-Table: `expenses`
-
-Expenses represent actual costs associated with an event or other tenant business activity.
-
-Initial expense categories:
-
+The initial expense categories are expected to include:
 - Food and ingredients.
-- Drinks.
+- Beverages.
 - Staff.
 - Transportation.
 - Other.
+The initial scope records expenses by amount and category. It does not require individual ingredient costing, stock quantities, inventory movements, or a full purchasing module.
+7.8.1 Staff Cost Treatment
+Staff compensation calculated through future employee assignments must not be counted again as a manually entered staff expense.
 
-Suggested fields:
+The authoritative treatment of planned, calculated, and actual staff costs must be defined before financial reporting is implemented.
+7.9 Company Settings
+Status: Planned — not yet implemented
 
-| Field | Description |
-|---|---|
-| id | Expense identifier |
-| tenant_id | Owning tenant |
-| event_id | Optional event reference |
-| category | Expense category |
-| description | Expense description |
-| amount | Total expense amount |
-| expense_date | Expense date |
-| currency | Currency code |
-| receipt_reference | Optional document reference |
-| notes | Additional information |
-| created_by | User who recorded the expense |
-| created_at | Creation timestamp |
-| updated_at | Last modification |
-
-The MVP will record expenses using total amounts per category or expense entry.
-
-It will not require individual ingredient costs, inventory management, or detailed stock movements.
-
-### 7.8.1 Staff Cost Treatment
-
-Staff compensation calculated through employee assignments must not be counted again as a manually entered staff expense.
-
-The system must establish a single authoritative financial treatment for staff costs.
-
-Recommended initial approach:
-
-- Employee assignment compensation is the source of planned and calculated staff costs.
-- Actual staff costs are recorded or reconciled against assignments.
-- Manual staff expense entries must not duplicate costs already included in event calculations.
-
-The exact distinction between planned, calculated, and actual staff costs must be finalized before implementing financial reporting.
-
-### 7.9 Company Settings
-
-Initial entity:
-
-- `tenant_settings`
-
-Company settings should support:
-
-- Company name.
+A future tenant settings model may support:
+- Company name and contact details.
 - Logo reference.
-- Address.
-- Phone.
-- Email.
-- Tax identifier.
+- Address and tax identification details.
 - Default language.
 - Timezone.
 - Default currency.
-- PDF branding preferences.
-- Configurable payment conditions.
-- Other tenant-level operational settings.
-
-The system should distinguish between structured company information and flexible configuration values.
-
+- Document branding preferences.
+- Payment conditions and other operational defaults.
 Important business settings should use validated structured fields rather than an unrestricted JSON object whenever practical.
+7.10 Audit Data
+Status: Planned — not yet implemented as a dedicated audit persistence module
 
-## 8. Financial Data Modeling
-
+A future audit_logs table may record important operations, including:
+- Tenant.
+- Actor user, when applicable.
+- Action.
+- Resource type and identifier.
+- Timestamp.
+- Relevant non-sensitive contextual metadata.
+Audit records must not contain passwords, access tokens, refresh tokens, or other secrets.
+8. Financial Data Modeling
 Financial data requires special attention because rounding and precision errors can create incorrect quotations, payment schedules, and reports.
+8.1 Monetary Values
+Implemented monetary fields use PostgreSQL NUMERIC and Python Decimal.
 
-### 8.1 Monetary Values
+The current products and quote models use NUMERIC(12, 2) for monetary values. Quote item quantity uses NUMERIC(10, 2).
 
-Monetary values must use PostgreSQL `NUMERIC` and Python `Decimal`.
+The implementation must not use binary floating-point arithmetic for financial calculations. API input and output schemas use decimal-compatible values, and services calculate monetary amounts using Decimal.
 
-Floating-point types must not be used for financial calculations.
+The exact precision must be reviewed if future requirements include higher-value transactions or additional currency conventions. The earlier conceptual recommendation of NUMERIC(14, 2) is not the current implemented type.
+8.2 Currency
+EUR is the initial default currency for the product scope.
 
-Recommended initial database representation:
+The current implemented Quote and QuoteItem models do not yet store an explicit currency code on each record. Tenant-level currency configuration and multi-currency transaction modeling remain future work.
 
-```sql
-NUMERIC(14, 2)
-```
+When currency support is implemented, financial records should store an explicit ISO 4217 currency code where appropriate. Currency symbols must not be embedded into stored numeric values.
 
-This supports amounts with two decimal places and sufficient range for the expected initial business operations.
+Changing a tenant's default currency must not silently convert historical financial records. Multi-currency conversion requires explicit exchange-rate and conversion policies.
+8.3 Rounding
+The current quote service uses decimal arithmetic and rounds monetary amounts to two decimal places using ROUND_HALF_UP.
 
-The exact precision must be reviewed if future requirements include higher-value transactions or additional currency conventions.
+It calculates line totals, subtotal, discount, tax, and total amount using Decimal-based operations.
 
-### 8.2 Currency
+The chosen rounding policy must remain consistent and covered by automated tests. Installment allocation and tax calculation rules will require additional specifications when those modules are implemented.
+8.4 Financial Snapshots
+The current quote item model preserves its own name, description, unit, quantity, unit price, and line total. These values do not change automatically when the associated catalog product changes.
 
-The initial platform currency is EUR.
-
-Financial records should store an explicit ISO 4217 currency code where appropriate.
-
-Example:
-
-```text
-EUR
-```
-
-Although the MVP uses EUR by default, the database should avoid hardcoding currency symbols into stored financial values.
-
-Future multi-currency support would require explicit exchange-rate and conversion policies.
-
-### 8.3 Rounding
-
-Financial calculations must use a consistent decimal rounding strategy.
-
-The application must define:
-
-- When rounding occurs.
-- Which precision is used for intermediate calculations.
-- How percentage-based installments are reconciled.
-- How discounts and taxes are calculated.
-- How displayed totals are derived.
-
-The chosen rounding policy must be covered by automated tests.
-
-### 8.4 Financial Snapshots
-
-Historical financial records must preserve the values agreed at the time of the transaction.
-
-Examples:
-
-- Approved quotation prices.
-- Payment conditions.
-- Installment amounts.
-- Employee compensation.
-- Discounts.
-- Applicable tax values.
-
-Changes to current catalog prices, payment conditions, or employee rates must not silently modify historical records.
-
-## 9. Historical Preservation and Soft Deletion
-
+Future financial records must similarly preserve the values agreed at the time of the transaction, including payment conditions, installment amounts, employee compensation, discounts, and applicable taxes.
+9. Historical Preservation and Archiving
 CaterFlow must preserve important business history.
 
-Financial records, approved quotations, completed events, payments, and audit records must not be silently deleted through ordinary application operations.
+Financial and commercial history must not be silently removed through ordinary application operations.
+9.1 Current Archiving Strategies
+The current implementation does not use one universal soft-delete column for every entity. Archiving is modeled according to entity needs:
+- Clients use an archive timestamp (archived_at).
+- Products use is_active to represent active or archived catalog entries.
+- Product categories use is_active and service-level rules that prevent archiving categories still in use by products or child categories.
+- Events are managed through status transitions, including cancellation; the event history is not removed by a normal delete operation.
+- Quotes use lifecycle statuses and have no ordinary hard-delete endpoint in the current API.
+These approaches must not be described as a universal deleted_at implementation.
+9.2 Historical Records
+Quote items preserve the relevant commercial values as snapshots. A catalog product update or archive operation must not silently modify an existing quote item.
 
-### 9.1 Soft Deletion
-
-Soft deletion may be used for records that can be deactivated or removed from active business workflows.
-
-Possible fields:
-
-- `deleted_at`
-- `deleted_by`
-
-Examples may include:
-
-- Customers.
-- Catalog items.
-- Employees.
-- Menus.
-
-The exact use of soft deletion must be defined per entity.
-
-### 9.2 Historical Records
-
-Approved quotations and financial records must preserve their historical meaning.
-
-When a related entity is deactivated or its current information changes, historical records must remain understandable.
-
-For example, an old quotation must not display a new catalog price simply because the catalog item was updated.
-
-### 9.3 Deletion and Retention
-
+Future approved quotations, payment records, event expenses, employee assignments, and audit records must preserve their historical meaning through explicit snapshot or history mechanisms.
+9.3 Deletion and Retention
 Deletion policies must account for:
-
 - Applicable legal retention requirements.
 - Contractual obligations.
 - Privacy obligations.
 - Financial auditability.
 - Backup retention.
+The platform must not retain personal information indefinitely without a valid purpose, but it must also not remove records required to satisfy legal or contractual obligations.
 
-The platform must not retain personal information indefinitely without a valid purpose, but it must also not remove records that are required to satisfy legal or contractual obligations.
+A complete retention policy remains future operational and legal work.
+10. Audit Data
+A dedicated audit persistence model is not yet implemented.
 
-The final retention policy will be defined in the security and operational documentation.
-
-## 10. Audit Data
-
-Critical business operations must generate audit records.
-
-Initial table:
-
-`audit_logs`
-
-Suggested fields:
-
-| Field | Description |
-|---|---|
-| id | Audit identifier |
-| tenant_id | Owning tenant |
-| actor_user_id | User responsible for the action, when applicable |
-| action | Operation performed |
-| resource_type | Affected entity type |
-| resource_id | Affected entity identifier |
-| occurred_at | Event timestamp |
-| metadata | Relevant non-sensitive contextual information |
-
-Audit records should support investigation of important business changes.
-
-Examples:
-
-- Quotation approval.
-- Quotation version creation.
-- Event cancellation.
-- Payment recording.
-- Expense modification.
+When implemented, critical operations should generate audit records that support investigation of important business changes, such as:
+- Quote status and approval changes.
+- Quote revision creation.
+- Event status changes and cancellation.
 - Employee assignment changes.
-- Role changes.
-- Membership changes.
-
-Audit records must not store passwords, access tokens, refresh tokens, or other secrets.
-
-The audit system should be append-only from the perspective of ordinary application users.
-
-## 11. Indexing Strategy
-
+- Payment recording and correction.
+- Expense creation and modification.
+- Role and membership changes.
+Audit records should be append-only from the perspective of ordinary application users and must not store secrets.
+11. Indexing Strategy
 Indexes must support common application queries and preserve acceptable performance as tenant data grows.
 
-### 11.1 Tenant Indexes
+Indexes must be selected according to actual query patterns. The project should avoid creating unnecessary indexes on every column.
+11.1 Tenant Indexes and Constraints
+Tenant-scoped models and relationships use tenant-aware constraints. Composite unique constraints such as (tenant_id, id) support composite foreign keys.
 
-All tenant-owned tables should have an index strategy that supports tenant-scoped queries.
+The exact index set is defined in the SQLAlchemy models and Alembic migrations. It must be inspected against the current schema rather than assumed from this conceptual document.
+11.2 Implemented Examples
+Current catalog and domain constraints include:
+- A partial unique index on (tenant_id, sku) for products where sku is not null.
+- A tenant-specific unique category name constraint on product_categories(tenant_id, name).
+- Tenant-aware unique constraints on referenced entity IDs where composite foreign keys require them.
+- Tenant-specific quote-number uniqueness on (tenant_id, quote_number).
+- Composite foreign-key relationships for clients, events, products, categories, quotes, quote items, memberships, and roles where defined by the models.
+Additional query indexes should be added when supported by measured query patterns and reviewed query plans.
+12. Constraints and Data Integrity
+The database enforces important integrity rules through foreign keys, unique constraints, check constraints, and indexes.
 
-The system should avoid creating unnecessary indexes on every column.
-
-Indexes must be selected according to actual query patterns.
-
-### 11.2 Recommended Initial Indexes
-
-Examples include:
-
-| Table | Index |
-|---|---|
-| customers | `(tenant_id, name)` |
-| customers | `(tenant_id, email)` where appropriate |
-| employees | `(tenant_id, is_active)` |
-| catalog_items | `(tenant_id, category_id)` |
-| quotations | `(tenant_id, status, created_at)` |
-| quotation_versions | `(tenant_id, quotation_id, version_number)` |
-| events | `(tenant_id, event_date)` |
-| events | `(tenant_id, status, event_date)` |
-| employee_assignments | `(tenant_id, event_id)` |
-| payment_installments | `(tenant_id, due_date, status)` |
-| payments | `(tenant_id, payment_date)` |
-| expenses | `(tenant_id, event_id, expense_date)` |
-| audit_logs | `(tenant_id, occurred_at)` |
-
-Unique indexes and foreign-key indexes must also be considered.
-
-The final index set should be validated against real query plans.
-
-## 12. Constraints and Data Integrity
-
-The database must enforce important data integrity rules.
-
-Examples:
-
-- Non-null tenant ownership.
-- Valid foreign-key relationships.
-- Unique business identifiers within a tenant.
-- Positive monetary amounts where appropriate.
-- Valid attendee counts.
-- Valid installment numbers.
-- Valid status values.
-- Valid date and time relationships.
-- Valid percentage ranges.
-- Tenant-scoped relationships.
-
-Business rules that require multiple database records or complex calculations should be enforced within application transactions, with database constraints providing additional protection wherever practical.
+Implemented examples include:
+- Required tenant ownership for tenant-scoped entities.
+- Tenant-aware foreign-key relationships.
+- Positive event guest count.
+- Event start timestamp earlier than end timestamp.
+- Quote item quantity greater than zero.
+- Non-negative quote item unit and total prices.
+- Non-negative quote discount, tax, subtotal, and total values where declared by the quote model.
+- Product sale and cost prices greater than or equal to zero.
+- Product type restricted to product or service.
+- Product unit restricted to the supported unit values.
+- Product SKU uniqueness per tenant when supplied.
+- Category parent relationships restricted to the same tenant and self-parenting prevented.
+- Unique quote numbers within a tenant.
+Business rules that require multiple records, status transitions, or calculations are enforced by application services within transactions, with database constraints providing additional protection wherever practical.
 
 The database must not rely exclusively on frontend validation.
+13. Transaction Management
+Critical business operations execute within database transactions. Services control commit and rollback behavior for the operations they own; repositories generally perform persistence and flush operations without committing independently.
 
-## 13. Transaction Management
+Current transactional operations include client, event, product, product-category, and quote service operations.
+13.1 Quote Creation and Update
+The current quote service performs operations such as:
+1. Validate that the client belongs to the active tenant and is not archived.
+2. Validate an optional event and ensure it belongs to the selected client.
+3. Resolve catalog-linked quote items, when supplied.
+4. Reject missing or archived products according to the quote service rules.
+5. Copy catalog details into quote item snapshots.
+6. Calculate line totals and quote totals.
+7. Persist the quote and its items.
+8. Commit or roll back the operation consistently.
+13.2 Quote Number Generation
+Quote number generation locks the current tenant row using SELECT ... FOR UPDATE before determining the next sequential quote number. This serializes number generation for a tenant.
+13.3 Future Event Conversion
+Formal conversion of an approved quote version into an event is not implemented yet. When implemented, it must validate the approved commercial record, prevent duplicate conversion, create the event and related records in a transaction, and preserve the originating commercial snapshot.
+13.4 Future Payment Recording
+Payment recording is not implemented yet. Its eventual transaction must validate the obligation and amount, create the receipt, update derived installment status, record audit information, and preserve earlier payment history.
+14. Data Consistency and Derived Values
+The database should distinguish authoritative records from derived values.
 
-Critical business operations must execute within database transactions.
-
-Examples:
-
-### 13.1 Quotation Approval
-
-The operation may need to:
-
-1. Validate the quotation.
-2. Validate the selected version.
-3. Record approval.
-4. Preserve the approved version reference.
-5. Generate the payment schedule according to the agreed business policy.
-6. Record audit information.
-
-The operation must either complete consistently or roll back.
-
-### 13.2 Event Conversion
-
-The operation may need to:
-
-1. Validate quotation approval.
-2. Verify that the event does not already exist.
-3. Create the event.
-4. Associate the approved quotation version.
-5. Initialize related operational records when required.
-6. Record the conversion.
-7. Commit the transaction.
-
-Idempotency must be enforced so retries do not create duplicate events.
-
-### 13.3 Payment Recording
-
-The operation may need to:
-
-1. Validate the installment or financial reference.
-2. Validate the received amount.
-3. Create the payment record.
-4. Update derived installment status.
-5. Record audit information.
-6. Commit the transaction.
-
-Partial payments must be supported without losing previous payment history.
-
-## 14. Data Consistency and Derived Values
-
-The database should distinguish between authoritative records and derived values.
-
-For example:
-
-- Payments received are authoritative financial records.
-- Outstanding balance is calculated from financial obligations and receipts.
-- Installment status can be derived from due amounts, receipts, and dates.
-- Dashboard totals are calculated from underlying business records.
-
-Derived values must not become independent sources of truth without a clear reason.
-
-If caching or materialized reporting data is introduced, it must be possible to reconcile it with authoritative records.
+Current examples:
+- Product sale_price and cost_price are current catalog values.
+- Quote item unit_price and total_price are commercial snapshots for that quote.
+- Quote subtotal, discount_amount, tax_amount, and total_amount are calculated and stored by the quote service.
+Future examples:
+- Payments received will be authoritative financial records.
+- Outstanding balance will be calculated from financial obligations and receipts.
+- Installment status may be derived from due amounts, receipts, and dates.
+- Dashboard totals will be calculated from underlying business records.
+Derived values must not become independent sources of truth without a clear reason. Any cached or materialized reporting data must be reconcilable with authoritative records.
 
 Financial calculations must have a single consistent implementation in the backend.
+15. Data Modeling and ORM Practices
+SQLAlchemy models reflect database constraints and relationships.
 
-## 15. Data Modeling and ORM Practices
+Current practices include:
+- SQLAlchemy 2.x typed declarative mappings.
+- A shared abstract base model for UUID identity and timestamps.
+- A TenantScoped mixin for tenant-owned models.
+- Explicit relationships and tenant-aware join conditions where needed.
+- Foreign keys, composite foreign keys, unique constraints, and check constraints defined in models.
+- Pydantic request and response schemas kept separate from ORM models.
+- Business rules implemented in services rather than hidden in ORM models.
+- Repository functions responsible for data access and persistence operations.
+- Tenant-aware sessions used for business operations.
+The ORM must not become the only source of data integrity. Important constraints must also exist in PostgreSQL.
 
-SQLAlchemy models must reflect the database constraints and relationships.
-
-Recommended practices:
-
-- Use SQLAlchemy 2.x typed declarative mappings.
-- Use explicit relationships.
-- Define foreign keys and unique constraints clearly.
-- Avoid excessive implicit relationship loading.
-- Avoid N+1 query patterns.
-- Use explicit transaction boundaries.
-- Keep database models separate from API request and response schemas.
-- Avoid placing complex business logic inside ORM models.
-- Use repositories or controlled data access services for tenant-scoped queries.
-
-The ORM must not become the only source of data integrity.
-
-Important constraints must also exist in PostgreSQL.
-
-## 16. Migration Strategy
-
-Alembic will manage database schema migrations.
-
-Every schema change must be version-controlled.
-
-### 16.1 Migration Rules
-
+Query loading should be explicit where necessary to avoid N+1 query patterns. Repository query behavior should be validated as modules grow.
+16. Migration Strategy
+Alembic manages database schema migrations. Every schema change must be version-controlled.
+16.1 Migration Rules
 - Migrations must have clear descriptions.
 - Migrations must be reviewed before deployment.
-- Migrations must preserve existing data.
-- Destructive operations require special care.
-- Production migrations must be backed by an appropriate recovery plan.
+- Migrations must preserve existing data unless a destructive change is explicitly planned and approved.
+- Destructive operations require special care and a recovery plan.
 - Schema changes must be tested against a representative database.
-- Migration execution must be part of the deployment process.
+- Production schema changes must be applied through Alembic migrations.
+- Application startup must not run drop_all() or create_all() against the production database.
+16.2 Recent Domain Migrations
+The current development history includes these domain migrations:
+Revision	Change
+c9798f84f1c1	Events module
+9829b0d499bc	Quotes module
+36d66b01b120	Products and product categories
+11f177f93ded	Optional product link and unit snapshot on quote items
 
-### 16.2 Backward-Compatible Changes
 
+The current migration head after the quote/catalog integration is 11f177f93ded.
+16.3 Backward-Compatible Changes
 Whenever practical, schema changes should follow an expand-and-contract strategy.
 
 For example:
-
-1. Add a new nullable column.
-2. Deploy code that supports both old and new structures.
-3. Populate existing records.
-4. Enforce the new constraint.
+1. Add a new nullable column or compatible structure.
+2. Deploy code that supports the old and new structures where required.
+3. Populate existing records if necessary.
+4. Enforce new constraints only after data is ready.
 5. Remove obsolete structures only after compatibility is confirmed.
-
 This reduces deployment risk as the platform evolves.
+16.4 Test Database Schema
+The automated test suite uses a dedicated PostgreSQL database named caterflow_test.
 
-## 17. Backup and Recovery
+The test fixture validates the database name before rebuilding the test schema with SQLAlchemy metadata. The current test setup uses Base.metadata.drop_all() followed by Base.metadata.create_all() against that isolated test database.
 
-The production database must have an explicit backup and recovery strategy.
+This behavior is restricted to the test fixture. It is not part of application startup and must never be used against development or production data.
+
+Applying Alembic migrations to the test database, rather than relying only on metadata recreation, remains a future testing improvement so that migration paths can also be verified automatically.
+17. Backup and Recovery
+The production database must have an explicit backup and recovery strategy before production release.
 
 The strategy must define:
-
 - Backup frequency.
 - Backup retention.
 - Backup encryption.
@@ -954,150 +646,130 @@ The strategy must define:
 - Restoration procedures.
 - Backup access restrictions.
 - Periodic restoration tests.
-
 Backups must be protected with access controls and must not be publicly accessible.
 
 A backup is not considered reliable until restoration has been tested.
 
-Specific infrastructure providers and backup mechanisms will be selected in the deployment documentation.
+Status: Production backup provider, schedules, retention, RPO, RTO, and restoration procedures have not yet been configured or validated.
+18. Testing Requirements
+Database tests verify both structure and behavior.
+18.1 Integrity Tests
+Implemented tests cover relevant constraints and service/repository behavior, including:
+- Required fields and valid model construction.
+- Foreign-key relationships.
+- Tenant-aware relationships.
+- Unique constraints and SKU validation.
+- Quote and quote-item monetary constraints.
+- Product type and unit validation.
+- Category hierarchy rules.
+Not every database constraint currently has a dedicated direct SQL-level test. Coverage should be extended as new modules are implemented.
+18.2 Tenant Isolation Tests
+The existing suite includes tenant isolation and authorization tests for implemented modules.
 
-## 18. Testing Requirements
+The tests verify scenarios such as:
+- A tenant cannot retrieve another tenant's clients, events, products, categories, or quotes through tenant-scoped access.
+- Tenant-scoped relationships do not allow cross-tenant client, event, category, product, quote, membership, or role references where composite constraints are defined.
+- Permission checks are enforced by the backend.
+Tenant isolation must not be weakened to make tests pass.
+18.3 Financial Tests
+The existing quote tests cover:
+- Quote subtotal, discount, tax, and total calculations.
+- Decimal-based money handling and rounding.
+- Quote item line totals.
+- Catalog sale price copied into a quote item.
+- Negotiated quote item price without changing the catalog price.
+- Preservation of quote item snapshots after catalog changes.
+- Preservation of catalog links and snapshots when duplicating a quote.
+Payment installment reconciliation, partial payments, refunds, employee compensation, staff cost reconciliation, and expense calculations remain future test work because those modules are not yet implemented.
+18.4 Migration Tests
+Migrations are version-controlled and applied through Alembic in development.
 
-Database tests must verify both structure and behavior.
+The current test database fixture recreates metadata and does not yet apply the complete Alembic migration chain as part of every test run.
 
-### 18.1 Integrity Tests
-
-- Required fields cannot be null.
-- Foreign keys reject invalid references.
-- Unique constraints work correctly.
-- Monetary values preserve decimal precision.
-- Invalid status values are rejected where constrained.
-
-### 18.2 Tenant Isolation Tests
-
-- Tenant A cannot reference Tenant B's customers.
-- Tenant A cannot associate employees from Tenant B with its events.
-- Tenant A cannot access Tenant B's payments.
-- Tenant A cannot create cross-tenant relationships.
-- Tenant-scoped unique constraints behave correctly.
-
-### 18.3 Financial Tests
-
-- Quotation totals are calculated consistently.
-- Quotation versions preserve historical prices.
-- Employee compensation snapshots remain unchanged.
-- Installment calculations reconcile with the approved total.
-- Partial payments are supported.
-- Outstanding balances are calculated correctly.
-- Staff costs are not double-counted.
-- Reversals preserve financial history.
-
-### 18.4 Migration Tests
-
-- Migrations can create a clean database.
-- Sequential migrations reach the expected schema.
-- Existing data remains valid after migrations.
-- Rollback procedures work where supported.
-- Production migration procedures are tested before release.
-
-## 19. Initial Database Module Organization
-
-The database schema should reflect the main application domains.
-
-Recommended conceptual organization:
-
-```text
-Identity and Access
+Automated tests for clean-database migration, sequential upgrades, preservation of existing data, and rollback behavior should be added before production release.
+19. Initial Database Module Organization
+The current and planned domain organization is:
+Identity and Access (implemented)
 ├── users
-├── user_sessions
-├── password_reset_tokens
-├── email_verification_tokens
 ├── tenants
-├── tenant_memberships
+├── memberships
 ├── roles
 ├── permissions
-└── role_permissions
+├── role_permissions
+├── membership_roles
+└── refresh_tokens
 
-Customers
-└── customers
+Clients (implemented)
+└── clients
 
-Workforce
+Events (implemented)
+└── events
+
+Catalog (implemented)
+├── product_categories
+└── products
+
+Quotes (implemented)
+├── quotes
+└── quote_items
+
+Workforce (planned)
 ├── employees
 ├── employee_assignments
 └── employee_time_entries
 
-Catalog
-├── catalog_categories
-├── catalog_items
-├── menus
-└── menu_items
-
-Quotations
-├── quotations
-├── quotation_versions
-├── quotation_items
-└── quotation_approvals
-
-Events
-└── events
-
-Payments
+Payments (planned)
 ├── payment_schedules
 ├── payment_installments
 └── payments
 
-Expenses
+Expenses (planned)
 └── expenses
 
-Tenant Configuration
+Tenant Configuration (planned)
 └── tenant_settings
 
-Audit
+Audit (planned)
 └── audit_logs
-```
+This is a logical grouping, not a requirement to create separate PostgreSQL schemas. Planned entity names are conceptual and may change during detailed modeling.
+20. Open Decisions and Deferred Work
+The following items remain open or deferred:
+Decision or capability	Current status
+UUID primary key strategy	Implemented using UUID values generated by the application
+Shared PostgreSQL schema with tenant ownership	Implemented
+Application-level tenant isolation	Implemented through tenant-aware sessions, services, and constraints
+PostgreSQL RLS	Deferred; do not implement unless explicitly revisited
+Exact field definitions for Workforce	Open; module not implemented
+Event origin link to approved quote version	Open; current quote-to-event workflow is not implemented
+Quote version and approval persistence	Open; current quote lifecycle does not provide immutable version tables
+Payment schedule creation timing	Open business decision
+Payment and installment schema	Open; module not implemented
+Staff cost reconciliation model	Open; depends on Workforce and Expenses design
+Expense schema and correction history	Open; module not implemented
+Tenant settings model	Open; module not implemented
+Dedicated audit persistence	Open; module not implemented
+Explicit currency storage on commercial and financial records	Open; current quote tables do not store currency codes
+Soft-archive policy per future entity	To be defined during implementation
+Backup provider, retention, RPO, and RTO	Open; required before production
+Automated Alembic migration tests	Improvement planned before production
+Materialized reporting data	Future consideration; not required for the current MVP stage
 
-This is a logical grouping, not a requirement to create separate PostgreSQL schemas.
-
-The final entity list may change as implementation details are refined.
-
-## 20. Open Decisions
-
-The following decisions must be finalized during detailed modeling:
-
-| Decision | Status |
-|---|---|
-| UUID generation strategy | Recommended |
-| Exact field definitions and data types | Open |
-| Event date and timezone representation | Open |
-| Final quotation item snapshot structure | Open |
-| Payment schedule creation timing | Proposed |
-| Staff cost reconciliation model | Open |
-| Tax calculation and fiscal requirements | Open |
-| Soft deletion policy per entity | Open |
-| Audit metadata structure | Open |
-| PostgreSQL RLS adoption | Open |
-| Backup provider and retention | Open |
-| Materialized reporting data | Future consideration |
 
 These decisions should be documented through Architecture Decision Records when finalized.
-
-## 21. Architectural Principles
-
+21. Architectural Principles
 The following principles are mandatory:
-
 1. PostgreSQL is the authoritative relational database.
 2. Tenant ownership must be explicit and enforced.
 3. Tenant-scoped relationships must be protected by database constraints.
 4. Financial values must use exact decimal types.
-5. Historical commercial and financial snapshots must be preserved.
+5. Historical commercial snapshots must be preserved.
 6. Critical business operations must use transactions.
 7. Repeated operations must be idempotent where required.
-8. Audit records must preserve critical business history.
+8. Audit persistence must preserve critical business history when implemented.
 9. Schema changes must be managed through Alembic.
 10. Database access must be tested for tenant isolation and financial consistency.
 11. Backup and restoration procedures must be established before production.
-12. The database schema must evolve deliberately rather than through uncontrolled changes.
-
----
-
-**End of document.**
+12. RLS remains deferred; application-level tenant isolation is the current approach.
+13. The test-only schema recreation process must never be executed against production.
+14. The database schema must evolve deliberately rather than through uncontrolled changes.
+End of document.

@@ -1,825 +1,326 @@
-# Testing Strategy
+CaterFlow — Testing Strategy
+Project: CaterFlow
+Document: Testing Strategy
+Version: 0.2
+Status: Implementation-aligned strategy
+Last updated: November 2026
+1. Purpose
+This document defines the testing strategy, quality standards, and validation procedures for CaterFlow. It distinguishes practices already implemented in the backend from requirements that remain planned for later modules and frontend development.
 
-**Project:** CaterFlow  
-**Document:** Testing Strategy  
-**Version:** 0.1  
-**Status:** Initial specification  
-**Last updated:** November 2026
-
----
-
-## 1. Purpose
-
-This document defines the testing strategy, quality standards, and validation procedures for the CaterFlow platform.
-
-The main objectives are:
-
+The main objectives are to:
 - Ensure application correctness and reliability.
-- Prevent regressions when new features are introduced.
+- Prevent regressions as features are introduced.
 - Validate business rules and financial calculations.
-- Guarantee tenant isolation.
+- Protect tenant data isolation.
 - Verify authentication and authorization.
-- Validate API contracts and database operations.
-- Ensure consistent frontend behavior.
-- Reduce production defects.
-
-Testing must be part of the development lifecycle rather than a final activity performed only before release.
-
-## 2. Testing Principles
-
-CaterFlow testing must follow these principles:
-
-### 2.1 Test Critical Business Rules
-
-Every important business rule must have automated tests.
-
-Financial calculations, quotation approvals, event conversions, payment schedules, and employee compensation require particular attention.
-
-### 2.2 Tenant Isolation Is Mandatory
-
-Every feature that accesses tenant-owned information must be tested for cross-tenant access.
-
-A successful request from one tenant must never expose another tenant's data.
-
-### 2.3 Test Expected and Unexpected Scenarios
-
-Tests must cover:
-
-- Successful operations.
-- Invalid input.
-- Missing resources.
-- Unauthorized operations.
-- Conflicting operations.
-- Boundary conditions.
-- Unexpected failures.
-
-### 2.4 Independent and Repeatable Tests
-
-Tests must produce predictable results regardless of execution order.
-
-They must not depend on manually created data or external production services.
-
-### 2.5 Test at the Appropriate Level
-
-Use unit tests for isolated logic, integration tests for interactions between components, and end-to-end tests for complete user workflows.
-
-## 3. Testing Levels
-
-The testing strategy will use the following levels:
-
+- Validate API contracts, persistence behavior, and database constraints.
+- Build confidence in critical workflows before release.
+Testing is part of the development lifecycle, not a final activity performed only before deployment.
+2. Testing Principles
+2.1 Test implemented behavior and planned behavior separately
+Tests must describe behavior that exists in the application. Planned capabilities must not be represented as implemented merely because they appear in product requirements. As modules are delivered, their acceptance criteria and tests should be added incrementally.
+2.2 Tenant isolation is mandatory
+Every feature that accesses tenant-owned information must be tested for cross-tenant access. A successful request from one tenant must never expose or modify another tenant's data.
+2.3 Test success and failure paths
+Tests should cover successful operations, invalid input, missing resources, insufficient permissions, conflicting operations, boundary conditions, and unexpected failures.
+2.4 Independent and repeatable tests
+Tests must produce predictable results regardless of execution order. They must not depend on manually created data or production services.
+2.5 Test at the appropriate level
+Use focused unit tests for isolated logic, service/repository tests for application behavior and persistence, API tests for HTTP contracts, and end-to-end tests for complete user workflows when the frontend is available.
+3. Testing Levels and Current Coverage
+CaterFlow uses a layered testing strategy:
 ```mermaid
 flowchart TD
-    A["Code Changes"] --> B["Static Analysis and Linting"]
-    B --> C["Unit Tests"]
-    C --> D["Integration Tests"]
-    D --> E["API and Database Tests"]
-    E --> F["End-to-End Tests"]
-    F --> G["Release Validation"]
+    A[Code Changes] --> B[Lint and Format Checks]
+    B --> C[Focused Unit and Service Tests]
+    C --> D[Repository and Database Tests]
+    D --> E[API Integration Tests]
+    E --> F[Frontend and End-to-End Tests]
+    F --> G[Release Validation]
 ```
+The backend currently has automated Pytest coverage across repositories, services, and API endpoints. Frontend component tests and browser-based end-to-end tests remain planned until the frontend implementation is available.
+3.1 Unit and service tests
+These tests validate business rules and use-case behavior without exercising the complete HTTP stack. Depending on the behavior, they may use the isolated test database and real repositories rather than mocks.
 
-### 3.1 Unit Tests
+Implemented areas include:
+- Client data validation and lifecycle rules.
+- Event date, guest-count, client, and status-transition rules.
+- Product and product-category validation and lifecycle rules.
+- Quote item resolution, totals, catalog defaults, negotiated prices, and duplication snapshots.
+- Permission catalog and authorization-related behavior.
+Planned areas include payment schedules, payment reconciliation, workforce compensation, expense calculations, and broader financial reporting.
+3.2 Repository and database integration tests
+Repository tests validate SQLAlchemy persistence behavior, tenant-scoped access, relationships, and database constraints using PostgreSQL.
 
-Unit tests validate individual functions, classes, and business rules without requiring the complete application infrastructure.
-
-Examples:
-
-- Quotation total calculations.
-- Discount calculations.
-- Payment installment generation.
-- Employee compensation calculations.
-- Event financial summaries.
-- Date and deadline validation.
-- Currency rounding.
-
-Unit tests should be fast and independent.
-
-External dependencies should be mocked when appropriate.
-
-### 3.2 Integration Tests
-
-Integration tests validate interactions between application components.
-
-Examples:
-
-- Service and repository interactions.
-- Database transactions.
-- Customer creation and persistence.
-- Quotation version creation.
-- Event conversion.
-- Payment registration.
-- Expense registration.
-- Storage adapter integration.
-
-Integration tests should use controlled test dependencies and isolated data.
-
-### 3.3 API Tests
-
-API tests validate HTTP endpoints through the FastAPI application.
-
-They must verify:
-
-- HTTP status codes.
+Implemented coverage includes:
+- Client, event, product, product-category, and quote persistence.
+- Tenant-aware relationships and composite foreign keys.
+- Product SKU uniqueness within a tenant.
+- Quote number uniqueness within a tenant.
+- Product-category hierarchy constraints.
+- Quote item references to catalog products.
+- Transaction rollback behavior through the test session setup.
+PostgreSQL is required for tests that depend on PostgreSQL-specific behavior or database constraints. SQLite should not replace PostgreSQL for those tests.
+3.3 API tests
+API tests exercise the FastAPI application and verify:
+- HTTP status codes and response schemas.
 - Request validation.
-- Response structures.
-- Authentication requirements.
-- Authorization requirements.
-- Tenant context validation.
-- Error responses.
-- Pagination.
-- Filtering and sorting.
-- Business rule enforcement.
+- Authentication and permission requirements.
+- Tenant context enforcement.
+- Resource-not-found and conflict behavior.
+- Business-rule enforcement at the HTTP boundary.
+Implemented endpoint coverage includes authentication/authorization foundations and the Clients, Events, Products, Product Categories, and Quotes modules.
+3.4 Frontend tests
+Frontend tests are planned. The intended coverage includes form validation, user interactions, loading and empty states, API errors, permission-aware navigation, responsive behavior, and localization.
 
-### 3.4 Database Tests
+The final framework and scripts must be confirmed when frontend testing is configured. Vitest, React Testing Library, and Playwright remain candidate tools, not established project dependencies.
+3.5 End-to-end tests
+Browser-based end-to-end tests are not yet part of the current implemented test suite. They should be introduced after the frontend and complete user workflows are available.
+4. Backend Testing Tools and Conventions
+The backend uses:
+- Pytest for automated tests.
+- FastAPI and its test client / HTTPX-compatible testing facilities for endpoint tests.
+- SQLAlchemy 2.x for ORM and database integration tests.
+- PostgreSQL for the isolated test database.
+- uv for dependency and command execution.
+Ruff is used by the development workflow for linting and formatting checks. Static type checking and coverage reporting may be added as explicit CI gates when configured; they are not assumed to be active solely because they are listed in this strategy.
+5. Current Backend Test Organization
+The current test suite is organized primarily by module and test type in the backend/tests/ directory. The exact file layout may evolve as the project grows; avoid creating empty directory structures solely to match a proposed diagram.
 
-Database tests validate persistence behavior and database-level constraints.
+The current organization includes module-specific test files for repositories, services, and API endpoints, along with shared fixtures in tests/conftest.py.
 
-They must cover:
+A future organization may introduce explicit unit/, integration/, api/, and security/ subdirectories when that separation improves discoverability. Moving tests is not required for the current strategy to be valid.
+6. Shared Fixtures and Test Data
+Shared fixtures are defined in backend/tests/conftest.py. The test setup provides a dedicated database session and application dependencies suitable for isolated tests.
 
-- Primary and foreign keys.
-- Unique constraints.
-- Tenant-scoped relationships.
-- Transactions and rollbacks.
-- Numeric precision.
-- Index-dependent query behavior where relevant.
-- Migrations.
-- Soft deletion and historical preservation.
+Test data should be created through fixtures or explicit test setup. Use separate tenant records and memberships when validating tenant boundaries. Prefer small, focused datasets over large shared fixtures with hidden dependencies.
 
-PostgreSQL must be used for integration tests that depend on PostgreSQL-specific behavior.
+As additional modules are implemented, shared factories or fixtures may be introduced for:
+- Users and tenants.
+- Tenant memberships and role assignments.
+- Clients and events.
+- Products and product categories.
+- Quotes and quote items.
+- Future employees, payments, expenses, and file metadata.
+Fixtures must not rely on production data or real external services.
+7. Test Database Isolation
+7.1 Dedicated PostgreSQL database
+Backend integration tests use a dedicated PostgreSQL database configured through TEST_DATABASE_URL. The test configuration validates that the target database has the expected test database name (caterflow_test) before destructive schema setup is performed.
 
-SQLite may be used for isolated tests only when its behavior is equivalent for the functionality being tested.
+The test fixture currently prepares the schema using SQLAlchemy metadata (drop_all() followed by create_all()) and uses an outer transaction with a session configured for savepoints (join_transaction_mode="create_savepoint"). This provides repeatable test setup and rollback isolation for the current test architecture.
 
-### 3.5 Frontend Tests
+Important: This schema reset is confined to the test fixture and the dedicated test database. It is not an application startup procedure and must never be used against development, staging, or production databases containing data that must be preserved.
+7.2 Migrations
+Production and persistent environments must be changed through Alembic migrations. The current test fixture creates its schema from Base.metadata; it does not yet validate the full Alembic migration chain on every test run.
 
-Frontend tests validate components and feature behavior.
+A separate migration verification step should be added to CI. It should create a clean temporary database, apply migrations from the base revision to head, and verify that the resulting schema is usable. Migration tests must not weaken the test database name safety check.
+7.3 PostgreSQL behavior
+Use PostgreSQL for composite foreign keys, transaction behavior, uniqueness constraints, tenant-scoped relationships, and any query behavior that depends on PostgreSQL semantics. Do not treat SQLite results as equivalent for these cases.
+8. Multi-Tenant Isolation Testing
+Tenant isolation is a mandatory release requirement. Tests must use at least two independent tenants and verify that records cannot be read or modified across tenant boundaries.
 
-They must cover:
-
-- Form validation.
-- User interactions.
-- Dialogs and confirmation flows.
-- Loading states.
-- Empty states.
-- Error states.
-- API integration behavior.
-- Permission-dependent interface behavior.
-- Localization.
-
-### 3.6 End-to-End Tests
-
-End-to-end tests validate complete business workflows from the user's perspective.
-
-They should cover the most important operational processes before production releases.
-
-## 4. Backend Testing Strategy
-
-The backend will use Pytest.
-
-Recommended supporting tools:
-
-- HTTPX for API testing.
-- FastAPI TestClient where appropriate.
-- SQLAlchemy test sessions.
-- PostgreSQL test database.
-- Coverage reporting.
-- Factory or fixture utilities for test data.
-
-### 4.1 Suggested Test Organization
-
-```text
-backend/
-└── tests/
-    ├── conftest.py
-    ├── unit/
-    │   ├── customers/
-    │   ├── quotations/
-    │   ├── payments/
-    │   └── workforce/
-    ├── integration/
-    │   ├── database/
-    │   ├── services/
-    │   └── storage/
-    ├── api/
-    │   ├── customers/
-    │   ├── quotations/
-    │   ├── events/
-    │   └── payments/
-    ├── security/
-    │   ├── authentication/
-    │   ├── authorization/
-    │   └── tenant_isolation/
-    └── e2e/
-```
-
-The exact organization may evolve as the number of modules grows.
-
-### 4.2 Fixtures
-
-Shared fixtures should provide:
-
-- Test database connection.
-- Database session.
-- FastAPI test client.
-- Authenticated user.
-- Tenant A.
-- Tenant B.
-- Tenant membership.
-- Users with different roles.
-- Sample customers.
-- Sample employees.
-- Sample catalog items.
-- Sample quotations and events.
-
-Fixtures must isolate test data and clean up after execution.
-
-### 4.3 Database Isolation
-
-Tests must not modify production data.
-
-Each test run must use a dedicated test database or an equivalent isolated database environment.
-
-Database transactions and cleanup procedures must prevent test data from leaking between tests.
-
-Tests that require multiple independent database connections or concurrent transactions must be designed to validate actual PostgreSQL behavior.
-
-## 5. Multi-Tenant Isolation Testing
-
-Tenant isolation is a mandatory release requirement.
-
-The test environment must contain at least two independent tenants.
-
-Example:
-
-- Tenant A: Catering Company A.
-- Tenant B: Catering Company B.
-- User A: Member of Tenant A.
-- User B: Member of Tenant B.
-
-Tests must verify that Tenant A cannot access Tenant B resources.
-
-### 5.1 Read Protection
-
-- User A cannot list Tenant B customers.
-- User A cannot retrieve Tenant B quotations.
-- User A cannot retrieve Tenant B events.
-- User A cannot access Tenant B employees.
-- User A cannot access Tenant B financial records.
-- User A cannot download Tenant B files.
-
-### 5.2 Write Protection
-
-- User A cannot modify Tenant B customers.
-- User A cannot modify Tenant B quotations.
-- User A cannot modify Tenant B events.
-- User A cannot modify Tenant B payment records.
-- User A cannot modify Tenant B expenses.
-
-### 5.3 Delete Protection
-
-- User A cannot delete Tenant B resources.
-- User A cannot archive Tenant B records.
-- User A cannot cancel Tenant B events.
-
-### 5.4 Relationship Protection
-
-The database and application must reject cross-tenant relationships.
-
-Examples:
-
-- A quotation from Tenant A cannot reference a customer from Tenant B.
-- An event from Tenant A cannot reference a quotation from Tenant B.
-- An employee assignment from Tenant A cannot reference an employee from Tenant B.
-- An expense from Tenant A cannot reference an event from Tenant B.
-
-### 5.5 Context Manipulation
-
+The current architecture uses application-level tenant isolation through TenantSession, ORM query criteria, tenant-aware service operations, and database constraints. PostgreSQL Row-Level Security (RLS) has been explicitly deferred and is not part of the current enforcement model.
+8.1 Read protection
+Tests should verify that a tenant cannot list or retrieve another tenant's clients, events, products, product categories, quotes, quote items, or other tenant-owned resources as those modules are added.
+8.2 Write and lifecycle protection
+Tests should verify that a tenant cannot create relationships to another tenant's records, update another tenant's records, or archive/cancel resources belonging to another tenant.
+8.3 Relationship protection
+Composite foreign keys and application validation must prevent cross-tenant associations. Implemented examples include:
+- A quote cannot reference a client from another tenant.
+- An event cannot reference a client from another tenant.
+- A quote cannot reference an event from another tenant.
+- A quote item linked to a catalog product cannot reference a product from another tenant.
+- A product cannot reference a category from another tenant.
+As more modules are implemented, equivalent tests must cover workforce assignments, payments, expenses, and file metadata.
+8.4 Context manipulation
 Tests must verify that:
-
-- Changing `tenant_id` in a request does not bypass authorization.
-- Guessing or obtaining another tenant's UUID does not grant access.
-- Switching tenant context requires valid membership.
-- Inactive memberships cannot access tenant resources.
-- Background jobs cannot execute with an unauthorized tenant context.
-
-### 5.6 Required Result
-
-<badge color="danger">Release blocker</badge>
-
-Any confirmed cross-tenant data exposure or unauthorized cross-tenant modification must block release.
-
-## 6. Authentication and Authorization Testing
-
-Authentication tests must validate the rules defined in `AUTHENTICATION.md`.
-
-Scenarios:
-
-- Valid login.
-- Invalid login.
-- Incorrect password.
-- Expired access token.
-- Invalid token signature.
-- Revoked refresh token.
-- Refresh token rotation.
-- Refresh token reuse detection.
-- Password recovery.
-- Inactive account.
-- Inactive tenant membership.
-- Session revocation.
-- Rate limiting on authentication endpoints.
-
-Authorization tests must validate the configured roles and permissions.
-
-Example scenarios:
-
-- Staff cannot perform administrative actions.
-- Finance users cannot modify unrelated tenant settings.
-- Viewers cannot modify business records.
-- Managers can only execute actions allowed by their permissions.
-- Tenant administrators cannot access platform-level administration.
-
-The test suite must verify backend permissions independently of frontend visibility.
-
-## 7. Financial Testing
-
-Financial correctness is critical to CaterFlow.
-
-All monetary calculations must use `Decimal` and be tested with representative values and edge cases.
-
-### 7.1 Quotation Calculations
-
-Test:
-
-- Item quantities and unit prices.
-- Subtotals.
-- Discounts.
-- Additional charges.
-- Taxes, if and when supported.
-- Final quotation total.
-- Decimal precision.
-- Rounding behavior.
-
-### 7.2 Quotation Versioning
-
-Test:
-
-- Creating a new quotation version.
-- Preserving previous versions.
-- Approving a specific version.
-- Preventing approval from silently changing the approved amount.
-- Preserving the approved commercial snapshot.
-- Creating a new version after relevant modifications.
-
-### 7.3 Payment Schedules
-
-Test:
-
-- Percentage-based installments.
-- Fixed-amount installments.
-- Installment totals matching the quotation amount.
-- Rejection of percentage schedules that do not total exactly 100%.
-- Reconciliation of fixed amounts with the approved amount.
-- Due date generation.
-- Preservation of payment terms after quotation approval.
-
-### 7.4 Payment Registration
-
-Test:
-
-- Full payment.
-- Partial payment.
-- Multiple payments against an installment.
-- Overpayment handling.
-- Duplicate payment prevention.
-- Payment cancellation or reversal.
-- Outstanding balance calculations.
-- Payment status transitions.
-
-### 7.5 Employee Compensation
-
-Test:
-
-- Hourly compensation.
-- Fixed compensation per event.
-- Planned hours.
-- Actual hours.
-- Compensation snapshots.
-- Changes to employee rates after an assignment is created.
-- Correct historical compensation preservation.
-
-### 7.6 Expense Calculations
-
-Test:
-
-- Expense creation.
-- Expense categories.
-- Event-associated expenses.
-- General expenses where supported.
-- Expense corrections.
-- Expense cancellation or reversal.
-- Total expense aggregation.
-- Prevention of duplicate staff cost recognition.
-
-### 7.7 Financial Summary
-
-Test that the application correctly distinguishes:
-
-- Approved quotation value.
-- Amount received.
-- Outstanding balance.
-- Actual expenses.
-- Estimated costs.
-- Actual financial result.
-
-Event completion must not automatically imply that all payments have been received.
-
-## 8. Quotation and Event Workflow Testing
-
-The following workflows must be tested.
-
-### 8.1 Quotation Creation
-
-- Create a quotation for an existing customer.
-- Add catalog items.
-- Apply pricing rules.
-- Generate totals.
-- Save the quotation.
-- Generate a PDF.
-- Verify that the document uses the correct tenant branding and language.
-
-### 8.2 Quotation Approval
-
-- Approve the current quotation version.
-- Preserve approval date and user.
-- Prevent silent changes to the approved version.
-- Generate the configured payment schedule.
-- Preserve the approved commercial terms.
-
-### 8.3 Event Conversion
-
-- Convert an approved quotation into an event.
-- Preserve relevant quotation information.
-- Preserve the approved amount.
-- Avoid duplicate event creation.
-- Verify that conversion is idempotent.
-
-### 8.4 Event Management
-
-- Schedule an event.
-- Assign employees.
-- Register planned hours.
-- Update event status.
-- Register actual hours.
-- Register expenses.
-- Complete the event.
-- Review financial results.
-
-### 8.5 Event Cancellation
-
-- Cancel an event.
-- Preserve historical information.
-- Preserve existing payment records.
-- Preserve existing expenses.
-- Register refunds or reversals explicitly when necessary.
-- Verify the resulting financial status.
-
-## 9. Workforce Testing
-
-The workforce module must support permanent employees and freelancers.
-
-Tests must cover:
-
-- Employee creation.
-- Employee updates.
-- Employee deactivation.
-- Employee assignment to events.
-- Assignment conflicts where applicable.
-- Role assignment within an event.
-- Planned hours.
-- Actual hours.
-- Compensation methods.
-- Historical compensation snapshots.
-- Employee access permissions.
-
-The application must preserve historical event assignments when employee information changes.
-
-## 10. Storage Testing
-
-Storage tests must validate the abstraction defined in `STORAGE.md`.
-
-Scenarios:
-
-- Upload a valid file.
-- Reject an unsupported file type.
-- Reject oversized files.
-- Generate unique internal file identifiers.
-- Verify tenant ownership.
-- Download an authorized file.
-- Reject unauthorized downloads.
-- Delete or archive a file according to retention rules.
-- Handle missing files.
-- Handle storage provider failures.
-- Prevent path traversal.
-- Verify that private files are not publicly accessible.
-
-Both local development storage and the selected production storage adapter must be tested.
-
-## 11. Frontend Testing Strategy
-
-The frontend will use a component and end-to-end testing framework.
-
-Recommended tools:
-
-- Vitest.
-- React Testing Library.
-- Playwright.
-
-The final selection and versions will be defined during frontend setup.
-
-### 11.1 Component Tests
-
-Test reusable components such as:
-
-- Buttons.
-- Dialogs.
-- Tables.
-- Forms.
-- Select fields.
-- Date pickers.
-- Status indicators.
-- Currency displays.
-- Navigation elements.
-
-### 11.2 Feature Tests
-
-Test important feature behavior:
-
-- Customer creation and editing.
-- Catalog item management.
-- Quotation creation.
-- Quotation version display.
-- Event scheduling.
-- Employee assignment.
-- Payment registration.
-- Expense registration.
-- Dashboard filtering.
-
-### 11.3 UI States
-
-Every major feature should be tested for:
-
-- Loading.
-- Success.
-- Empty results.
-- Validation errors.
-- API errors.
-- Permission restrictions.
-- Responsive behavior where relevant.
-
-### 11.4 Localization
-
-Test:
-
-- Portuguese translations.
-- Spanish translations.
-- English translations.
-- Date formatting.
-- Number formatting.
-- Currency formatting.
-- Timezone-sensitive displays.
-- Language selection for generated documents where applicable.
-
-## 12. End-to-End Testing
-
-End-to-end tests must validate critical user workflows through the actual frontend and backend.
-
-Initial scenarios:
-
-### E2E-001: Tenant Onboarding
-
-1. Create a tenant.
-2. Register its owner.
-3. Configure company information.
-4. Configure language and timezone.
-5. Verify access to the tenant dashboard.
-
-### E2E-002: Customer and Catalog Setup
-
-1. Create a customer.
-2. Register catalog items.
-3. Configure relevant prices.
-4. Verify that the information is available for quotations.
-
-### E2E-003: Quotation to Event
-
-1. Create a quotation.
-2. Generate its PDF.
-3. Approve a specific quotation version.
-4. Verify the payment schedule.
-5. Convert the quotation into an event.
-6. Verify that no duplicate event is created.
-
-### E2E-004: Event Operations
-
-1. Open an event.
-2. Assign employees.
-3. Register planned hours.
-4. Update the event status.
-5. Register actual hours.
-6. Add expenses.
-7. Complete the event.
-
-### E2E-005: Financial Reconciliation
-
-1. Register a partial payment.
-2. Register another payment.
-3. Verify the outstanding balance.
-4. Verify payment status.
-5. Compare approved revenue with actual expenses.
-6. Verify the final financial summary.
-
-### E2E-006: Tenant Isolation
-
-1. Create two independent tenants.
-2. Create separate users.
-3. Create business records for each tenant.
-4. Attempt to access Tenant B data using Tenant A credentials.
-5. Verify that all unauthorized operations are rejected.
-
-### E2E-007: Cancellation and Reversal
-
-1. Create and approve a quotation.
-2. Convert it into an event.
-3. Register a payment and an expense.
-4. Cancel the event.
-5. Verify that historical financial records remain available.
-6. Register explicit reversals where appropriate.
-7. Verify the resulting financial summary.
-
-## 13. Test Data Management
-
+- A tenant identifier supplied by a client cannot bypass membership validation.
+- Knowing another tenant's UUID does not grant access.
+- Switching the active tenant requires valid membership.
+- Inactive or unauthorized memberships cannot access tenant resources.
+- Tenant-scoped sessions do not permit access outside their assigned tenant.
+- Background jobs, when introduced, establish an explicit authorized tenant context.
+8.5 Release requirement
+Any confirmed cross-tenant data exposure or unauthorized cross-tenant modification is a release blocker.
+9. Authentication and Authorization Testing
+Authentication and authorization tests must reflect the implemented token and permission model documented in AUTHENTICATION.md and SECURITY.md.
+
+Tests should cover, where implemented:
+- Valid and invalid login credentials.
+- Invalid, malformed, and expired access tokens.
+- Refresh-token lifecycle and revocation behavior.
+- Inactive user or membership behavior.
+- Tenant membership validation.
+- Permission checks for protected operations.
+- Users with multiple roles and the union of their effective permissions.
+- Owner-specific role and permission administration capabilities.
+- Denial of operations when a permission is absent.
+Do not add tests for refresh-token rotation, reuse detection, password recovery, rate limiting, or session revocation until those capabilities exist in the application. Add them as acceptance criteria when the corresponding functionality is implemented.
+
+Authorization must be tested at the backend boundary. Hiding a button or page in the frontend is not an authorization control.
+10. Financial and Commercial Testing
+All monetary calculations must use Decimal and be tested with representative values and edge cases. The current implementation includes quote totals and quote item pricing; the broader financial workflows below remain future scope unless explicitly implemented in a subsequent module.
+10.1 Implemented quotation coverage
+Tests should validate:
+- Item quantity and unit price calculations.
+- Subtotal, discount, tax, and total calculations supported by the current quote model.
+- Decimal precision and rounding behavior.
+- Manual quote items.
+- Quote items linked to catalog products.
+- Default item name, description, unit, and sale price from the catalog.
+- Negotiated prices that differ from catalog sale prices.
+- Rejection of nonexistent, cross-tenant, or archived catalog products.
+- Snapshot preservation when a product is later changed or archived.
+- Quote duplication with a new quote number and preserved item snapshots.
+10.2 Future quotation versioning and approval
+The current quote workflow does not yet implement persisted quotation versions or a separate approval record. Quote statuses such as accepted must not be interpreted as proof that a complete approval/versioning workflow exists.
+
+When versioning and approval are implemented, tests must cover version immutability, approval identity and timestamp, approved commercial snapshots, and creation of a new version after changes that require it.
+10.3 Future payments and reconciliation
+When the Payments module is implemented, test installment generation, percentage and fixed-amount schedules, partial and full payments, overpayments, duplicate transaction prevention, reversals, outstanding balances, and payment status transitions.
+10.4 Future workforce and expenses
+When these modules are implemented, test compensation snapshots, planned versus actual hours, expense corrections and reversals, aggregation, and prevention of duplicate cost recognition.
+10.5 Future financial summaries
+Reporting tests must distinguish approved commercial value, received payments, outstanding balances, estimated costs, actual expenses, and actual financial result. Event completion must not imply that all payments have been received.
+11. Clients, Products, Quotes, and Events Workflow Testing
+The current backend supports core CRUD and business operations for Clients, Events, Products, Product Categories, and Quotes. Tests should validate the implemented flows without assuming that unimplemented workflows are already available.
+11.1 Clients
+Test customer creation and updates, PF/PJ validation, required contact information rules, tenant isolation, and soft-archive behavior. Archived clients must not be treated as active choices for new business operations where the service rules require an active client.
+11.2 Products and product categories
+Test product/service creation, updates, activation state, category hierarchy, tenant-scoped SKU uniqueness, category ownership, and archive restrictions. A category must not be archived while it still has products or child categories when the service rule prohibits it.
+11.3 Quotes
+Test quote creation, retrieval, updates, sending, and duplication. Verify tenant-scoped quote numbering, client/event associations, item calculations, catalog item resolution, and historical item snapshots.
+11.4 Events
+Test event creation and retrieval, active client validation, date ordering, positive guest count, tenant-aware client association, and allowed status transitions. Verify that invalid transitions are rejected and that cancellation does not bypass the event lifecycle rules.
+11.5 Future quote-to-event conversion
+A dedicated approved-quote-to-event conversion workflow, including idempotency and preservation of an approved quote version, is not currently implemented. Add integration and end-to-end tests when that workflow is delivered.
+12. Storage Testing
+The storage abstraction and production object-storage integration remain planned. When implemented, tests should validate:
+- Upload and retrieval of valid files.
+- File size and type validation.
+- Unique internal file identifiers.
+- Tenant ownership and authorization.
+- Unauthorized download rejection.
+- Deletion or retention behavior.
+- Missing-file handling.
+- Provider failures and retry behavior.
+- Path traversal prevention.
+- Private-file access controls.
+Use a local test adapter or a controlled provider sandbox. Never use production files in automated tests.
+13. Frontend Testing Strategy
+Frontend testing will be defined when the Next.js application features are implemented. Candidate tools are:
+- Vitest for test execution.
+- React Testing Library for component behavior.
+- Playwright for browser-based end-to-end tests.
+The final tools and versions must match the actual frontend dependencies and scripts.
+13.1 Component and feature tests
+Cover reusable controls and feature behavior such as forms, tables, dialogs, customer management, catalog management, quote creation, event scheduling, and permission-aware navigation as those features become available.
+13.2 UI states and localization
+Major features should cover loading, success, empty, validation-error, API-error, and permission-restricted states. Localization tests should cover Portuguese, Spanish, English, date/time formatting, number formatting, and currency display when those frontend capabilities are implemented.
+14. End-to-End Testing
+End-to-end tests are a future quality gate once a usable frontend is available. Initial scenarios should be introduced incrementally:
+- Tenant onboarding and tenant switching.
+- Client and catalog setup.
+- Quote creation using manual and catalog items.
+- Quote sending and duplication.
+- Event creation and status management.
+- Cross-tenant access denial.
+- Future quote approval and conversion to an event.
+- Future payment registration, expense recording, and financial reconciliation.
+Do not label a scenario as passing until it is automated and executed in the target environment.
+15. Test Data Management
 Test data must be predictable, isolated, and reproducible.
 
 Requirements:
+- Use fixtures or factories for repeated entities.
+- Use separate tenants when testing isolation.
+- Include users with different permissions.
+- Include representative decimal and monetary values.
+- Cover active and archived records.
+- Cover valid and invalid event states and date ranges.
+- Cover quotes with manual and catalog-linked items.
+- Avoid shared mutable state between tests.
+- Never copy sensitive production information into tests without an approved anonymization process.
+16. Test Environment and External Services
+The test environment must remain separate from production and should use:
+- The dedicated PostgreSQL test database.
+- Test-specific environment configuration.
+- Isolated file storage when storage is introduced.
+- Test authentication credentials and tokens.
+- Mocks or approved sandbox environments for external integrations.
+Automated tests must not send real customer emails, process real payments, or modify production files.
+17. Coverage and Quality Metrics
+Coverage reports can help identify untested code, but meaningful assertions and risk-based scenarios are more important than a percentage alone.
 
-- Use factories or fixtures for repeated entities.
-- Avoid depending on production data.
-- Use representative financial values.
-- Include different tenant configurations.
-- Include users with different roles.
-- Include both permanent employees and freelancers.
-- Include events in different operational states.
-- Include quotations with different payment conditions.
-- Include partial and fully paid invoices or installments where applicable.
+The following are proposed targets for a mature test suite, not verified current coverage levels:
+Area	Proposed target
+Backend overall	80%
+Financial calculations	95%
+Tenant isolation and authorization	95%
+Critical application services	90%
+Frontend feature logic	80%
 
-Sensitive production information must never be copied into the test environment without an approved anonymization process.
 
-## 14. Test Environment
+A high coverage percentage does not guarantee correctness. Critical security, tenant-isolation, and financial scenarios must be tested explicitly.
 
-The development and testing environments must be separated from production.
+Coverage tooling and enforced thresholds should be added to CI only after configuration and baseline measurement.
+18. Local Test Execution
+The current backend test suite is run from the backend directory using uv:
+# Run all backend tests
+uv run pytest
 
-The testing environment should include:
+# Run a specific test file
+uv run pytest tests/test_quote_service.py
 
-- Dedicated PostgreSQL database.
-- Backend test configuration.
-- Frontend test configuration.
-- Isolated storage.
-- Test authentication configuration.
-- Mock or sandbox external integrations.
-
-Tests must not send real customer emails, process real payments, or modify production files.
-
-External services should use mocks or approved sandbox environments.
-
-## 15. Code Coverage
-
-Coverage reports should help identify untested critical logic.
-
-Initial targets:
-
-| Area | Initial target |
-|---|---:|
-| Backend overall | 80% |
-| Financial calculations | 95% |
-| Tenant isolation and authorization | 95% |
-| Critical application services | 90% |
-| Frontend feature logic | 80% |
-
-These are initial engineering targets, not substitutes for meaningful test cases.
-
-A high coverage percentage does not guarantee correctness.
-
-Critical security and financial scenarios must be tested explicitly, even when overall coverage is already high.
-
-## 16. Continuous Integration
-
-CI must execute automated checks for every relevant change.
-
-Recommended pipeline:
-
+# Run a specific test by keyword
+uv run pytest -k "tenant"
+Ruff checks are part of the development workflow and are run separately:
+uv run ruff check .
+uv run ruff format --check .
+Frontend commands, coverage commands, and browser test commands must be documented after the corresponding tools and package scripts are configured. Do not assume proposed commands such as npm run test:ci or pytest --cov exist until their dependencies and scripts have been added.
+19. Continuous Integration
+CI should eventually execute the checks relevant to each changed component. A proposed pipeline is:
 ```mermaid
 flowchart TD
-    A["Pull Request"] --> B["Install Locked Dependencies"]
-    B --> C["Lint and Format Checks"]
-    C --> D["Static Type Checks"]
-    D --> E["Backend Unit Tests"]
-    E --> F["Database and API Integration Tests"]
-    F --> G["Frontend Tests"]
-    G --> H["Production Build"]
-    H --> I["Dependency Security Checks"]
-    I --> J["Ready for Review"]
+    A[Pull Request] --> B[Install Locked Dependencies]
+    B --> C[Ruff Checks]
+    C --> D[Backend Tests]
+    D --> E[Migration Verification]
+    E --> F[Frontend Tests]
+    F --> G[Production Build]
+    G --> H[Dependency and Security Checks]
+    H --> I[Ready for Review]
 ```
+The exact CI provider and pipeline configuration remain deployment decisions. Until CI is configured, developers must run the applicable checks locally and review their results before merging.
 
-The pipeline must fail when mandatory checks fail.
-
-Production deployment must not proceed when critical tests are failing.
-
-## 17. Test Execution Commands
-
-The following commands represent the intended testing interface.
-
-Exact scripts and configuration will be created during implementation.
-
-### Backend
-
-```powershell
-# Run all backend tests
-pytest
-
-# Run unit tests
-pytest tests/unit
-
-# Run integration tests
-pytest tests/integration
-
-# Run API tests
-pytest tests/api
-
-# Run security tests
-pytest tests/security
-
-# Generate coverage report
-pytest --cov=app --cov-report=term-missing
-```
-
-### Frontend
-
-```powershell
-# Run frontend tests
-npm test
-
-# Run tests in CI mode
-npm run test:ci
-
-# Run lint checks
-npm run lint
-
-# Run TypeScript checks
-npx tsc --noEmit
-
-# Build the production application
-npm run build
-```
-
-These commands are proposed conventions. Their availability depends on the scripts and dependencies configured during project setup.
-
-## 18. Release Quality Gates
-
-A release must not proceed when any of the following conditions apply:
-
+A future CI pipeline should fail when mandatory checks fail. Migration verification should use a disposable database and the actual Alembic migration chain.
+20. Release Quality Gates
+A release must not proceed when any of the following applies:
 - Critical backend tests are failing.
-- Critical frontend tests are failing.
-- Tenant isolation tests are failing.
-- Authorization tests reveal unauthorized access.
+- Tenant isolation tests reveal cross-tenant access.
+- Authorization tests reveal unauthorized operations.
 - Financial calculations produce incorrect results.
-- Database migrations are invalid or unverified.
-- Production build fails.
-- Critical security vulnerabilities remain unresolved without an approved mitigation.
+- A database migration is invalid or has not been verified.
+- The production build fails.
+- A critical security vulnerability remains unresolved without an explicitly approved mitigation.
+Release validation must include the test scope affected by the change, relevant integration tests, and migration verification where the database schema changes.
+21. Open Decisions
+Decision	Current status
+PostgreSQL test database	Implemented with dedicated caterflow_test database
+Test schema setup	Implemented using metadata reset and transactional session/savepoints
+Alembic migration-chain verification in tests/CI	Planned
+Frontend testing framework	To be selected; Vitest and React Testing Library are candidates
+End-to-end framework	To be selected; Playwright is a candidate
+CI provider and pipeline	To be selected / configured
+Coverage reporting and thresholds	Proposed; not yet established as enforced gates
+Security scanning tools	To be selected
+Test parallelization	To be evaluated against database isolation requirements
+Production smoke tests	To be defined
 
-All release-blocking defects must be addressed or explicitly evaluated before deployment.
 
-## 19. Open Decisions
+22. Final Principles
+Testing is a fundamental part of CaterFlow development. Every implemented critical feature must include automated tests for expected behavior, failure scenarios, permissions, and tenant boundaries.
 
-The following decisions remain open:
+Tenant isolation, authentication, authorization, financial correctness, and historical data preservation are mandatory quality requirements. Planned capabilities must be tested when implemented, not assumed to exist because they appear in this document.
 
-| Decision | Status |
-|---|---|
-| PostgreSQL test database strategy | To be defined |
-| Database cleanup and transaction strategy | To be defined |
-| Frontend testing framework | Recommended: Vitest and React Testing Library |
-| End-to-end framework | Recommended: Playwright |
-| CI provider | To be selected |
-| Coverage reporting integration | To be selected |
-| Security scanning tools | To be selected |
-| Test execution parallelization | To be evaluated |
-| Production smoke test strategy | To be defined |
-
-## 20. Final Principles
-
-Testing is a fundamental part of CaterFlow development.
-
-Every critical feature must include automated tests that validate both expected behavior and failure scenarios.
-
-Tenant isolation, authentication, authorization, financial correctness, and historical data preservation are mandatory quality requirements.
-
-The project must prioritize meaningful tests over coverage percentages alone.
-
-**End of document.**
+End of document.
