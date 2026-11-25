@@ -1,5 +1,7 @@
 from app.models.client import Client
+from app.models.employee import Employee
 from app.models.event import Event
+from app.models.event_staff_assignment import EventStaffAssignment
 from app.models.membership import Membership
 from app.models.membership_role import MembershipRole
 from app.models.permission import Permission
@@ -17,7 +19,9 @@ from app.models.user import User
 
 __all__ = [
     "Client",
+    "Employee",
     "Event",
+    "EventStaffAssignment",
     "Membership",
     "MembershipRole",
     "Permission",

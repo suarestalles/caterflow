@@ -1,3 +1,4 @@
+
 from datetime import datetime
 from enum import StrEnum
 from uuid import UUID
@@ -136,4 +137,15 @@ class Event(Abstract, TenantScoped):
         "Quote",
         back_populates="event",
         primaryjoin="and_(Event.id == foreign(Quote.event_id), Event.tenant_id == Quote.tenant_id)",
+    )
+
+    staff_assignments = relationship(
+        "EventStaffAssignment",
+        back_populates="event",
+        primaryjoin=(
+            "and_("
+            "Event.id == foreign(EventStaffAssignment.event_id), "
+            "Event.tenant_id == EventStaffAssignment.tenant_id"
+            ")"
+        ),
     )

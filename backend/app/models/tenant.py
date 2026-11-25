@@ -1,3 +1,4 @@
+
 from sqlalchemy import String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -56,6 +57,20 @@ class Tenant(Abstract):
 
     products = relationship(
         "Product",
+        back_populates="tenant",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+    employees = relationship(
+        "Employee",
+        back_populates="tenant",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+    event_staff_assignments = relationship(
+        "EventStaffAssignment",
         back_populates="tenant",
         cascade="all, delete-orphan",
         passive_deletes=True,
