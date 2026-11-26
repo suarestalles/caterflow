@@ -28,6 +28,32 @@ class PlatformLoginRequest(BaseModel):
         return value
 
 
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str = Field(min_length=1)
+
+
 class TokenResponse(BaseModel):
     access_token: str
+    refresh_token: str
     token_type: str = "bearer"
+
+
+class UserSessionResponse(BaseModel):
+    id: UUID
+    full_name: str
+    email: EmailStr
+
+
+class TenantSessionInfo(BaseModel):
+    id: UUID
+    name: str
+
+
+class TenantSessionResponse(BaseModel):
+    user: UserSessionResponse
+    tenant: TenantSessionInfo
+
+
+class PlatformSessionResponse(BaseModel):
+    user: UserSessionResponse
+    is_platform_admin: bool = True

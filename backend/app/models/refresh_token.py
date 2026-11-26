@@ -16,6 +16,12 @@ class RefreshToken(Abstract):
         index=True,
     )
 
+    tenant_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("tenants.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+
     token_hash: Mapped[str] = mapped_column(
         String(255),
         nullable=False,
@@ -48,6 +54,8 @@ class RefreshToken(Abstract):
         "User",
         back_populates="refresh_tokens",
     )
+
+    tenant = relationship("Tenant")
 
     replaced_by = relationship(
         "RefreshToken",
