@@ -14,6 +14,7 @@ from app.db.session import get_db
 from app.db.tenant_session import TenantSession, get_tenant_db
 from app.models.membership import Membership
 from app.models.platform_admin import PlatformAdmin
+from app.models.tenant import Tenant
 from app.models.user import User
 from app.repositories import auth as auth_repository
 from app.services.permissions import get_effective_permissions
@@ -68,9 +69,12 @@ def get_auth_context(
         raise unauthorized
 
     membership = db.scalar(
-        select(Membership.id).where(
+        select(Membership.id)
+        .join(Tenant, Tenant.id == Membership.tenant_id)
+        .where(
             Membership.user_id == user_id,
             Membership.tenant_id == tenant_id,
+            Tenant.is_active.is_(True),
         )
     )
 

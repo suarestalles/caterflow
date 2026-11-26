@@ -1,8 +1,10 @@
 from uuid import UUID
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.security import create_access_token, verify_password
+from app.models.tenant import Tenant
 from app.models.user import User
 from app.repositories import auth as auth_repository
 
@@ -53,6 +55,13 @@ def login_tenant(
         user.id,
         tenant_id,
     )
+
+    tenant_is_active = db.scalar(
+        select(Tenant.is_active).where(Tenant.id == tenant_id)
+    )
+
+    if tenant_is_active is not True:
+        raise TenantAccessDeniedError
 
     if membership is None:
         raise TenantAccessDeniedError

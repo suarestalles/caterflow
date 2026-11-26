@@ -30,6 +30,7 @@ from app.models.role_permission import RolePermission
 from app.models.tenant import Tenant
 from app.models.tenant_scoped import TenantScoped
 from app.models.user import User
+from app.models.user_action_token import UserActionToken
 
 __all__ = [
     "Client",
@@ -63,4 +64,5 @@ __all__ = [
     "Tenant",
     "TenantScoped",
     "User",
+    "UserActionToken",
 ]

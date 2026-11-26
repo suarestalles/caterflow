@@ -3,7 +3,6 @@ import secrets
 from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
-import jwt
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
@@ -12,6 +11,7 @@ from app.core.security import create_access_token
 from app.models.membership import Membership
 from app.models.platform_admin import PlatformAdmin
 from app.models.refresh_token import RefreshToken
+from app.models.tenant import Tenant
 from app.models.user import User
 
 
@@ -111,6 +111,17 @@ def rotate_refresh_token(
     tenant_id = stored_token.tenant_id
 
     if tenant_id is not None:
+        tenant_is_active = db.scalar(
+            select(Tenant.is_active).where(
+                Tenant.id == tenant_id,
+            )
+        )
+
+        if tenant_is_active is not True:
+            _revoke_family(db, stored_token.family_id, now)
+            db.commit()
+            raise InvalidRefreshTokenError
+        
         membership = db.scalar(
             select(Membership.id).where(
                 Membership.user_id == user.id,
