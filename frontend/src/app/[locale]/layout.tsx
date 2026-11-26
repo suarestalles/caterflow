@@ -7,6 +7,7 @@ import { hasLocale } from "next-intl";
 import { notFound } from "next/navigation";
 import { routing } from "@/i18n/routing";
 import "../globals.css";
+import { AuthProvider } from "@/providers/auth-provider";
 
 const domine = Domine({
   variable: "--font-domine",
@@ -46,7 +47,7 @@ export default async function LocaleLayout({
     <html lang={locale} className={`${domine.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col">
         <NextIntlClientProvider messages={messages}>
-          {children}
+          <AuthProvider>{children}</AuthProvider>
         </NextIntlClientProvider>
       </body>
     </html>

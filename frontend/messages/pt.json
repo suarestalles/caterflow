@@ -48,5 +48,21 @@
     "twentyMinutesAgo": "Há 20 minutos",
     "twoHoursAgo": "Há 2 horas",
     "yesterday": "Ontem"
+  },
+  "Login": {
+    "title": "Bem-vindo ao CaterFlow",
+    "description": "Entre na sua conta para continuar.",
+    "email": "E-mail",
+    "emailPlaceholder": "seu@email.com",
+    "password": "Senha",
+    "passwordPlaceholder": "Digite sua senha",
+    "tenantId": "ID da empresa",
+    "tenantIdPlaceholder": "UUID da sua empresa",
+    "tenantIdHint": "Informe o identificador da empresa à qual sua conta pertence.",
+    "submit": "Entrar",
+    "submitting": "Entrando...",
+    "invalidCredentials": "Não foi possível entrar. Verifique suas credenciais e o ID da empresa.",
+    "unexpectedError": "Ocorreu um erro inesperado. Tente novamente.",
+    "requiredFields": "Preencha todos os campos."
   }
 }
