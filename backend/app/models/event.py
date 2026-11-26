@@ -149,3 +149,14 @@ class Event(Abstract, TenantScoped):
             ")"
         ),
     )
+
+    payment_schedule = relationship(
+        "PaymentSchedule",
+        back_populates="event",
+        uselist=False,
+    )
+
+    financial_adjustments = relationship(
+        "EventFinancialAdjustment",
+        back_populates="event",
+    )

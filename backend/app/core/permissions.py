@@ -56,6 +56,12 @@ class PermissionCode(StrEnum):
     FINANCE_EXPENSES_MANAGE = "finance.expenses.manage"
     FINANCE_PAYMENTS_MANAGE = "finance.payments.manage"
 
+    # Payments
+    PAYMENTS_READ = "payments.read"
+    PAYMENTS_CREATE = "payments.create"
+    PAYMENTS_REFUND = "payments.refund"
+    PAYMENTS_ADJUST = "payments.adjust"
+
     # Reports
     REPORTS_READ = "reports.read"
 
@@ -263,6 +269,27 @@ PERMISSION_CATALOG: tuple[PermissionDefinition, ...] = (
         PermissionCode.FINANCE_PAYMENTS_MANAGE,
         "finance",
         "Manage event payments.",
+    ),
+    # Payments
+    PermissionDefinition(
+        PermissionCode.PAYMENTS_READ,
+        "payments",
+        "View payment schedules, payments, refunds, and financial adjustments.",
+    ),
+    PermissionDefinition(
+        PermissionCode.PAYMENTS_CREATE,
+        "payments",
+        "Create payment schedules and register payments.",
+    ),
+    PermissionDefinition(
+        PermissionCode.PAYMENTS_REFUND,
+        "payments",
+        "Create, process, and cancel payment refunds.",
+    ),
+    PermissionDefinition(
+        PermissionCode.PAYMENTS_ADJUST,
+        "payments",
+        "Create additional charges and discounts for events.",
     ),
     # Reports
     PermissionDefinition(

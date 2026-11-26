@@ -75,3 +75,51 @@ class Tenant(Abstract):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
+
+    payment_schedules = relationship(
+        "PaymentSchedule",
+        back_populates="tenant",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        overlaps="payment_schedule",
+    )
+
+    payment_installments = relationship(
+        "PaymentInstallment",
+        back_populates="tenant",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        overlaps="installments",
+    )
+
+    payments = relationship(
+        "Payment",
+        back_populates="tenant",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        overlaps="payments",
+    )
+
+    payment_refunds = relationship(
+        "PaymentRefund",
+        back_populates="tenant",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        overlaps="refunds",
+    )
+
+    event_financial_adjustments = relationship(
+        "EventFinancialAdjustment",
+        back_populates="tenant",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        overlaps="financial_adjustments,created_by_adjustment",
+    )
+
+    event_financial_adjustment_allocations = relationship(
+        "EventFinancialAdjustmentAllocation",
+        back_populates="tenant",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        overlaps="allocations",
+    )

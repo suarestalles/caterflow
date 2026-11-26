@@ -137,6 +137,13 @@ class Quote(Abstract, TenantScoped):
         passive_deletes=True,
     )
 
+    payment_schedule = relationship(
+        "PaymentSchedule",
+        back_populates="quote",
+        uselist=False,
+        overlaps="payment_schedule",
+    )
+
 
 # Imports used by relationship joins
 from app.models.client import Client
