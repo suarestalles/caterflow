@@ -10,13 +10,34 @@ export function AuthGuard({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
 
+  const isPlatformAdmin = session?.is_platform_admin === true;
+  const hasTenantAccess = Boolean(session?.tenant) && !isPlatformAdmin;
+
   useEffect(() => {
-    if (!isLoading && !error && !session && pathname !== "/login") {
+    if (isLoading || error) return;
+
+    if (!session) {
+      router.replace("/login");
+      return;
+    }
+
+    if (isPlatformAdmin) {
+      router.replace("/platform");
+      return;
+    }
+
+    if (!hasTenantAccess) {
       router.replace("/login");
     }
-  }, [error, isLoading, pathname, router, session]);
-
-  if (pathname === "/login") return children;
+  }, [
+    error,
+    hasTenantAccess,
+    isLoading,
+    isPlatformAdmin,
+    pathname,
+    router,
+    session,
+  ]);
 
   if (isLoading) {
     return (
@@ -45,7 +66,7 @@ export function AuthGuard({ children }: { children: ReactNode }) {
     );
   }
 
-  if (!session) return null;
+  if (!session || !hasTenantAccess) return null;
 
   return children;
 }
