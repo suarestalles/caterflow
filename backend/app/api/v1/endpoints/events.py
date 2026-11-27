@@ -14,6 +14,7 @@ from app.schemas.event import (
     EventResponse,
     EventUpdate,
 )
+from app.schemas.event_financial_summary import EventFinancialSummaryRead
 from app.services.events import (
     EventClientNotFoundError,
     EventNotFoundError,
@@ -24,6 +25,7 @@ from app.services.events import (
     list_events,
     update_event,
 )
+from app.services.event_financial_summary import get_event_financial_summary
 
 router = APIRouter(tags=["Events"])
 
@@ -101,6 +103,23 @@ def list_events_endpoint(
         )
     except InvalidEventDataError as error:
         _handle_event_error(error)
+
+
+@router.get(
+    "/{event_id}/financial-summary",
+    response_model=EventFinancialSummaryRead,
+    dependencies=[
+        Depends(require_permission(PermissionCode.FINANCE_READ))
+    ],
+)
+def get_event_financial_summary_endpoint(
+    event_id: UUID,
+    db: Session = Depends(get_current_tenant_db),
+):
+    return get_event_financial_summary(
+        db,
+        event_id,
+    )
 
 
 @router.get(

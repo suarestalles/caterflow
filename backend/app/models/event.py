@@ -160,3 +160,14 @@ class Event(Abstract, TenantScoped):
         "EventFinancialAdjustment",
         back_populates="event",
     )
+
+    expenses = relationship(
+        "Expense",
+        back_populates="event",
+        primaryjoin=(
+            "and_("
+            "Event.id == foreign(Expense.event_id), "
+            "Event.tenant_id == Expense.tenant_id"
+            ")"
+        ),
+    )

@@ -163,3 +163,10 @@ class EventStaffAssignment(Abstract, TenantScoped):
         "Tenant",
         back_populates="event_staff_assignments",
     )
+
+    compensation_payments = relationship(
+        "EmployeeCompensationPayment",
+        back_populates="assignment",
+        passive_deletes=True,
+        overlaps="tenant,employee_compensation_payments",
+    )

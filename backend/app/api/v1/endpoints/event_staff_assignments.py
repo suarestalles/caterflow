@@ -3,9 +3,17 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from app.api.v1.deps import get_current_tenant_db, require_permission
+from sqlalchemy import select
+
+from app.api.v1.deps import (
+    AuthContext,
+    get_auth_context,
+    get_current_tenant_db,
+    require_permission,
+)
 from app.core.permissions import PermissionCode
 from app.db.tenant_session import TenantSession
+from app.models.membership import Membership
 from app.schemas.event_staff_assignment import (
     EventStaffAssignmentCreate,
     EventStaffAssignmentListResponse,
@@ -23,6 +31,7 @@ from app.services.event_staff_assignments import (
     list_event_staff_assignments,
     update_event_staff_assignment,
 )
+from app.services.permissions import get_effective_permissions
 
 router = APIRouter(tags=["Event Staff Assignments"])
 
@@ -48,6 +57,55 @@ def _handle_assignment_error(error: Exception) -> None:
         ) from error
 
     raise error
+
+def require_assignment_update_permissions(
+    assignment_id: UUID,
+    auth: AuthContext = Depends(get_auth_context),
+    db: TenantSession = Depends(get_current_tenant_db),
+) -> bool:
+    membership_id = db.scalar(
+        select(Membership.id).where(
+            Membership.user_id == auth.user.id,
+            Membership.tenant_id == auth.tenant_id,
+        )
+    )
+
+    if membership_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have access to this tenant.",
+        )
+
+    permissions = get_effective_permissions(
+        db=db,
+        membership_id=membership_id,
+        tenant_id=auth.tenant_id,
+    )
+
+    if str(PermissionCode.STAFF_ASSIGN) not in permissions:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Insufficient permissions.",
+        )
+
+    try:
+        assignment = get_event_staff_assignment(
+            db,
+            assignment_id=assignment_id,
+        )
+    except EventStaffAssignmentNotFoundError as error:
+        _handle_assignment_error(error)
+
+    if (
+        assignment.status == "completed"
+        and str(PermissionCode.FINANCE_EXPENSES_MANAGE) not in permissions
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Financial correction permission is required.",
+        )
+
+    return str(PermissionCode.FINANCE_EXPENSES_MANAGE) in permissions
 
 
 @router.post(
@@ -127,11 +185,14 @@ def get_event_staff_assignment_endpoint(
 @router.patch(
     "/{assignment_id}",
     response_model=EventStaffAssignmentResponse,
-    dependencies=[Depends(require_permission(PermissionCode.STAFF_ASSIGN))],
 )
 def update_event_staff_assignment_endpoint(
     assignment_id: UUID,
     payload: EventStaffAssignmentUpdate,
+    allow_financial_correction: bool = Depends(
+        require_assignment_update_permissions
+    ),
+    auth: AuthContext = Depends(get_auth_context),
     db: TenantSession = Depends(get_current_tenant_db),
 ) -> EventStaffAssignmentResponse:
     try:
@@ -139,6 +200,8 @@ def update_event_staff_assignment_endpoint(
             db,
             assignment_id=assignment_id,
             data=payload.model_dump(exclude_unset=True),
+            recorded_by_user_id=auth.user.id,
+            allow_financial_correction=allow_financial_correction,
         )
     except (
         EventStaffAssignmentNotFoundError,

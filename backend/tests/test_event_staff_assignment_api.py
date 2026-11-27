@@ -1,7 +1,7 @@
 
 from datetime import UTC, datetime
 from decimal import Decimal
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from fastapi.testclient import TestClient
@@ -19,6 +19,7 @@ from app.main import app
 from app.models.client import Client
 from app.models.employee import Employee
 from app.models.event import Event
+from app.models.financial_audit_log import FinancialAuditLog
 from app.models.membership import Membership
 from app.models.membership_role import MembershipRole
 from app.models.permission import Permission
@@ -519,3 +520,234 @@ def test_assignment_can_be_cancelled(
 
     assert response.status_code == 200
     assert response.json()["status"] == "cancelled"
+
+
+def test_completed_assignment_financial_correction_is_audited(
+    db_session,
+):
+    client, tenant, user = api_client_factory(
+        db_session,
+        permissions=[
+            PermissionCode.STAFF_READ,
+            PermissionCode.STAFF_ASSIGN,
+            PermissionCode.FINANCE_EXPENSES_MANAGE,
+        ],
+    )
+
+    event = create_event_for_tenant(db_session, tenant)
+    employee = create_employee_for_tenant(db_session, tenant)
+
+    try:
+        with client:
+            created = client.post(
+                "/api/v1/event-staff-assignments/",
+                json=create_assignment_payload(event.id, employee.id),
+            )
+            assignment_id = created.json()["id"]
+
+            confirmed = client.patch(
+                f"/api/v1/event-staff-assignments/{assignment_id}",
+                json={"status": "confirmed"},
+            )
+            assert confirmed.status_code == 200
+
+            completed = client.patch(
+                f"/api/v1/event-staff-assignments/{assignment_id}",
+                json={
+                    "status": "completed",
+                    "actual_hours": "6.00",
+                },
+            )
+            assert completed.status_code == 200
+
+            correction = client.patch(
+                f"/api/v1/event-staff-assignments/{assignment_id}",
+                json={
+                    "actual_hours": "7.00",
+                    "reason": "The employee worked one additional hour.",
+                },
+            )
+
+        assert correction.status_code == 200
+        assert Decimal(correction.json()["actual_hours"]) == Decimal("7.00")
+        assert Decimal(correction.json()["actual_compensation"]) == Decimal(
+            "87.50"
+        )
+
+        logs = db_session.scalars(
+            select(FinancialAuditLog).where(
+                FinancialAuditLog.entity_id == UUID(assignment_id),
+                FinancialAuditLog.tenant_id == tenant.id,
+            )
+        ).all()
+
+        assert len(logs) == 2
+
+        logs_by_field = {log.field_name: log for log in logs}
+
+        assert set(logs_by_field) == {
+            "actual_hours",
+            "actual_compensation",
+        }
+
+        assert logs_by_field["actual_hours"].old_value == "6.00"
+        assert logs_by_field["actual_hours"].new_value == "7.00"
+
+        assert logs_by_field["actual_compensation"].old_value == "75.00"
+        assert logs_by_field["actual_compensation"].new_value == "87.50"
+
+        for log in logs:
+            assert log.event_id == event.id
+            assert log.recorded_by_user_id == user.id
+            assert log.reason == (
+                "The employee worked one additional hour."
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+
+
+def test_completed_assignment_correction_without_finance_permission_returns_403(
+    db_session,
+):
+    client, tenant, _ = api_client_factory(
+        db_session,
+        permissions=[
+            PermissionCode.STAFF_READ,
+            PermissionCode.STAFF_ASSIGN,
+        ],
+    )
+
+    event = create_event_for_tenant(db_session, tenant)
+    employee = create_employee_for_tenant(db_session, tenant)
+
+    try:
+        with client:
+            created = client.post(
+                "/api/v1/event-staff-assignments/",
+                json=create_assignment_payload(event.id, employee.id),
+            )
+            assignment_id = created.json()["id"]
+
+            client.patch(
+                f"/api/v1/event-staff-assignments/{assignment_id}",
+                json={"status": "confirmed"},
+            )
+
+            completed = client.patch(
+                f"/api/v1/event-staff-assignments/{assignment_id}",
+                json={
+                    "status": "completed",
+                    "actual_hours": "6.00",
+                },
+            )
+            assert completed.status_code == 200
+
+            correction = client.patch(
+                f"/api/v1/event-staff-assignments/{assignment_id}",
+                json={
+                    "actual_hours": "7.00",
+                    "reason": "Correction attempt.",
+                },
+            )
+
+        assert correction.status_code == 403
+    finally:
+        app.dependency_overrides.clear()
+
+
+
+def test_completed_assignment_correction_without_reason_returns_422(
+    db_session,
+):
+    client, tenant, _ = api_client_factory(
+        db_session,
+        permissions=[
+            PermissionCode.STAFF_READ,
+            PermissionCode.STAFF_ASSIGN,
+            PermissionCode.FINANCE_EXPENSES_MANAGE,
+        ],
+    )
+
+    event = create_event_for_tenant(db_session, tenant)
+    employee = create_employee_for_tenant(db_session, tenant)
+
+    try:
+        with client:
+            created = client.post(
+                "/api/v1/event-staff-assignments/",
+                json=create_assignment_payload(event.id, employee.id),
+            )
+            assignment_id = created.json()["id"]
+
+            client.patch(
+                f"/api/v1/event-staff-assignments/{assignment_id}",
+                json={"status": "confirmed"},
+            )
+
+            completed = client.patch(
+                f"/api/v1/event-staff-assignments/{assignment_id}",
+                json={
+                    "status": "completed",
+                    "actual_hours": "6.00",
+                },
+            )
+            assert completed.status_code == 200
+
+            correction = client.patch(
+                f"/api/v1/event-staff-assignments/{assignment_id}",
+                json={"actual_hours": "7.00"},
+            )
+
+        assert correction.status_code == 422
+    finally:
+        app.dependency_overrides.clear()
+
+
+
+def test_completed_assignment_rejects_non_financial_changes(db_session):
+    client, tenant, _ = api_client_factory(
+        db_session,
+        permissions=[
+            PermissionCode.STAFF_READ,
+            PermissionCode.STAFF_ASSIGN,
+            PermissionCode.FINANCE_EXPENSES_MANAGE,
+        ],
+    )
+
+    event = create_event_for_tenant(db_session, tenant)
+    employee = create_employee_for_tenant(db_session, tenant)
+
+    try:
+        with client:
+            created = client.post(
+                "/api/v1/event-staff-assignments/",
+                json=create_assignment_payload(event.id, employee.id),
+            )
+            assignment_id = created.json()["id"]
+
+            client.patch(
+                f"/api/v1/event-staff-assignments/{assignment_id}",
+                json={"status": "confirmed"},
+            )
+
+            completed = client.patch(
+                f"/api/v1/event-staff-assignments/{assignment_id}",
+                json={
+                    "status": "completed",
+                    "actual_hours": "6.00",
+                },
+            )
+            assert completed.status_code == 200
+
+            correction = client.patch(
+                f"/api/v1/event-staff-assignments/{assignment_id}",
+                json={
+                    "notes": "Updated after completion.",
+                    "reason": "Trying to update operational information.",
+                },
+            )
+
+        assert correction.status_code == 422
+    finally:
+        app.dependency_overrides.clear()

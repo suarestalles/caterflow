@@ -4,6 +4,7 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
+from app.models.employee import Employee
 from app.models.event import Event, EventStatus
 from app.models.event_staff_assignment import (
     CompensationType,
@@ -13,6 +14,11 @@ from app.models.event_staff_assignment import (
 from app.repositories import employees as employee_repository
 from app.repositories import events as event_repository
 from app.repositories import event_staff_assignments as assignment_repository
+from app.schemas.financial_audit_log import (
+    FinancialAuditEntityType,
+    FinancialAuditLogCreate,
+)
+from app.services import financial_audit_logs
 
 
 class EventStaffAssignmentNotFoundError(Exception):
@@ -92,7 +98,7 @@ def create_event_staff_assignment(
         event_id=assignment_data["event_id"],
     )
 
-    _validate_employee(
+    employee = _validate_employee(
         db,
         employee_id=assignment_data["employee_id"],
     )
@@ -110,17 +116,40 @@ def create_event_staff_assignment(
             "This employee is already assigned to this event."
         )
 
+    compensation_type = assignment_data.get("compensation_type")
+    compensation_rate = assignment_data.get("compensation_rate")
+
+    if compensation_type is None and compensation_rate is None:
+        compensation_type = employee.default_compensation_type
+        compensation_rate = employee.default_compensation_rate
+
+    elif compensation_type is None or compensation_rate is None:
+        raise InvalidEventStaffAssignmentDataError(
+            "Compensation type and rate must be provided together."
+        )
+
+    if compensation_type is None or compensation_rate is None:
+        raise InvalidEventStaffAssignmentDataError(
+            "The employee has no default compensation. "
+            "Provide compensation type and rate for this assignment."
+        )
+
     compensation_type = _normalize_compensation_type(
-        assignment_data["compensation_type"]
+        compensation_type
     )
 
-    assignment_data["compensation_type"] = compensation_type
+    if compensation_rate <= Decimal("0"):
+        raise InvalidEventStaffAssignmentDataError(
+            "Compensation rate must be greater than zero."
+        )
 
+    assignment_data["compensation_type"] = compensation_type
+    assignment_data["compensation_rate"] = compensation_rate
     assignment_data["status"] = EventStaffAssignmentStatus.ASSIGNED.value
 
     assignment_data["planned_compensation"] = _calculate_planned_compensation(
         planned_hours=assignment_data["planned_hours"],
-        compensation_rate=assignment_data["compensation_rate"],
+        compensation_rate=compensation_rate,
         compensation_type=compensation_type,
     )
 
@@ -139,11 +168,14 @@ def create_event_staff_assignment(
         raise
 
 
+
 def update_event_staff_assignment(
     db: Session,
     *,
     assignment_id: UUID,
     data: dict,
+    recorded_by_user_id: UUID | None = None,
+    allow_financial_correction: bool = False,
 ) -> EventStaffAssignment:
     assignment = get_event_staff_assignment(
         db,
@@ -151,19 +183,50 @@ def update_event_staff_assignment(
     )
 
     updated_data = data.copy()
+    reason = updated_data.pop("reason", None)
 
     if not updated_data:
         raise InvalidEventStaffAssignmentDataError(
             "At least one field must be provided."
         )
 
-    if assignment.status in {
-        EventStaffAssignmentStatus.COMPLETED.value,
-        EventStaffAssignmentStatus.CANCELLED.value,
-    }:
+    is_completed = (
+        assignment.status == EventStaffAssignmentStatus.COMPLETED.value
+    )
+
+    if assignment.status == EventStaffAssignmentStatus.CANCELLED.value:
         raise InvalidEventStaffAssignmentDataError(
-            "Completed or cancelled assignments cannot be modified."
+            "Cancelled assignments cannot be modified."
         )
+
+    financial_fields = {
+        "actual_hours",
+        "actual_compensation",
+        "compensation_rate",
+        "compensation_type",
+    }
+
+    if is_completed:
+        if not allow_financial_correction:
+            raise InvalidEventStaffAssignmentDataError(
+                "Financial correction permission is required."
+            )
+
+        if not set(updated_data).issubset(financial_fields):
+            raise InvalidEventStaffAssignmentDataError(
+                "Only financial fields can be corrected "
+                "on completed assignments."
+            )
+
+        if not isinstance(reason, str) or not reason.strip():
+            raise InvalidEventStaffAssignmentDataError(
+                "A reason is required for financial corrections."
+            )
+
+        if recorded_by_user_id is None:
+            raise InvalidEventStaffAssignmentDataError(
+                "The user responsible for the correction is required."
+            )
 
     if "status" in updated_data:
         new_status = _normalize_status(updated_data["status"])
@@ -227,7 +290,7 @@ def update_event_staff_assignment(
         "planned_hours",
         "compensation_rate",
         "compensation_type",
-    }.intersection(updated_data):
+    }.intersection(updated_data) and not is_completed:
         updated_data["planned_compensation"] = (
             _calculate_planned_compensation(
                 planned_hours=planned_hours,
@@ -259,12 +322,96 @@ def update_event_staff_assignment(
                 )
             )
 
+    audit_changes = []
+
+    if is_completed:
+        if (
+            {
+                "actual_hours",
+                "compensation_rate",
+                "compensation_type",
+            }.intersection(updated_data)
+            and "actual_compensation" not in updated_data
+        ):
+            actual_hours = updated_data.get(
+                "actual_hours",
+                assignment.actual_hours,
+            )
+
+            if actual_hours is None:
+                actual_hours = Decimal("0")
+
+            updated_data["actual_compensation"] = (
+                _calculate_actual_compensation(
+                    actual_hours=actual_hours,
+                    compensation_rate=compensation_rate,
+                    compensation_type=compensation_type,
+                )
+            )
+
+        for field_name in financial_fields:
+            if field_name not in updated_data:
+                continue
+
+            old_value = getattr(assignment, field_name)
+            new_value = updated_data[field_name]
+
+            if field_name == "compensation_type":
+                new_value = _normalize_compensation_type(new_value)
+                updated_data[field_name] = new_value
+
+            if old_value is None and new_value is None:
+                continue
+
+            if old_value is not None and new_value is not None:
+                if field_name == "compensation_type":
+                    unchanged = old_value == new_value
+                else:
+                    unchanged = Decimal(str(old_value)) == Decimal(
+                        str(new_value)
+                    )
+            else:
+                unchanged = old_value == new_value
+
+            if not unchanged:
+                audit_changes.append(
+                    {
+                        "field_name": field_name,
+                        "old_value": (
+                            str(old_value) if old_value is not None else None
+                        ),
+                        "new_value": (
+                            str(new_value) if new_value is not None else None
+                        ),
+                    }
+                )
+
+        if not audit_changes:
+            raise InvalidEventStaffAssignmentDataError(
+                "No financial changes were detected."
+            )
+
     try:
         assignment = assignment_repository.update_event_staff_assignment(
             db,
             assignment=assignment,
             data=updated_data,
         )
+
+        for change in audit_changes:
+            financial_audit_logs.record(
+                db,
+                data=FinancialAuditLogCreate(
+                    event_id=assignment.event_id,
+                    entity_type=FinancialAuditEntityType.EVENT_STAFF_ASSIGNMENT,
+                    entity_id=assignment.id,
+                    field_name=change["field_name"],
+                    old_value=change["old_value"],
+                    new_value=change["new_value"],
+                    reason=reason.strip(),
+                ),
+                recorded_by_user_id=recorded_by_user_id,
+            )
 
         db.commit()
         db.refresh(assignment)
@@ -275,11 +422,12 @@ def update_event_staff_assignment(
         raise
 
 
+
 def _validate_employee(
     db: Session,
     *,
     employee_id: UUID,
-) -> None:
+) -> Employee:
     employee = employee_repository.get_employee_by_id(
         db,
         employee_id,
@@ -289,6 +437,8 @@ def _validate_employee(
         raise AssignmentEmployeeNotFoundError(
             "An active employee from this tenant is required."
         )
+
+    return employee
 
 
 def _validate_event(
@@ -329,11 +479,16 @@ def _calculate_planned_compensation(
 
 def _calculate_actual_compensation(
     *,
-    actual_hours: Decimal,
+    actual_hours: Decimal | None,
     compensation_rate: Decimal,
     compensation_type: str,
 ) -> Decimal:
     if compensation_type == CompensationType.HOURLY.value:
+        if actual_hours is None:
+            raise InvalidEventStaffAssignmentDataError(
+                "Actual hours are required for hourly compensation."
+            )
+
         return (actual_hours * compensation_rate).quantize(
             Decimal("0.01")
         )

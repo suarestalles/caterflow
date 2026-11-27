@@ -130,3 +130,34 @@ class Tenant(Abstract):
         passive_deletes=True,
         overlaps="allocations",
     )
+
+    employee_compensation_payments = relationship(
+        "EmployeeCompensationPayment",
+        back_populates="tenant",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        overlaps="compensation_payments,assignment",
+    )
+
+    expenses = relationship(
+        "Expense",
+        back_populates="tenant",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        overlaps="expenses",
+    )
+
+    expense_payments = relationship(
+        "ExpensePayment",
+        back_populates="tenant",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        overlaps="payments,expense",
+    )
+
+    financial_audit_logs = relationship(
+        "FinancialAuditLog",
+        back_populates="tenant",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )

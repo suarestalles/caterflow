@@ -37,9 +37,11 @@ class EventStaffAssignmentCreate(BaseModel):
         decimal_places=2,
     )
 
-    compensation_type: CompensationType
-    compensation_rate: Decimal = Field(
-        ge=Decimal("0"),
+    compensation_type: CompensationType | None = None
+
+    compensation_rate: Decimal | None = Field(
+        default=None,
+        gt=Decimal("0"),
         max_digits=12,
         decimal_places=2,
     )
@@ -60,6 +62,24 @@ class EventStaffAssignmentCreate(BaseModel):
         if not value:
             raise ValueError("Assignment position cannot be empty.")
         return value
+
+    @model_validator(mode="after")
+    def validate_compensation_pair(self):
+        if (
+            self.compensation_type is None
+            and self.compensation_rate is None
+        ):
+            return self
+
+        if (
+            self.compensation_type is None
+            or self.compensation_rate is None
+        ):
+            raise ValueError(
+                "Compensation type and rate must be provided together."
+            )
+
+        return self
 
 
 class EventStaffAssignmentUpdate(BaseModel):
@@ -98,6 +118,11 @@ class EventStaffAssignmentUpdate(BaseModel):
     )
 
     notes: str | None = None
+
+    reason: str | None = Field(
+        default=None,
+        max_length=2000,
+    )
 
     @field_validator("position", "notes", mode="before")
     @classmethod

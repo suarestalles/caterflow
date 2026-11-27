@@ -1,6 +1,7 @@
 
 from app.models.client import Client
 from app.models.employee import Employee
+from app.models.employee_compensation_payment import EmployeeCompensationPayment
 from app.models.event import Event
 from app.models.event_financial_adjustment import (
     EventFinancialAdjustment,
@@ -8,6 +9,9 @@ from app.models.event_financial_adjustment import (
 )
 from app.models.event_financial_adjustment_allocation import EventFinancialAdjustmentAllocation
 from app.models.event_staff_assignment import EventStaffAssignment
+from app.models.expense import Expense, ExpenseCategory
+from app.models.expense_payment import ExpensePayment
+from app.models.financial_audit_log import FinancialAuditLog
 from app.models.membership import Membership
 from app.models.membership_role import MembershipRole
 from app.models.payment import Payment, PaymentMethod
@@ -35,11 +39,16 @@ from app.models.user_action_token import UserActionToken
 __all__ = [
     "Client",
     "Employee",
+    "EmployeeCompensationPayment",
     "Event",
     "EventFinancialAdjustment",
     "EventFinancialAdjustmentAllocation",
     "EventStaffAssignment",
+    "Expense",
+    "ExpenseCategory",
+    "ExpensePayment",
     "FinancialAdjustmentType",
+    "FinancialAuditLog",
     "InstallmentStatus",
     "InstallmentType",
     "Membership",

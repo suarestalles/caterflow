@@ -1,9 +1,11 @@
 
 from datetime import datetime
+from decimal import Decimal
 
 from sqlalchemy import (
     CheckConstraint,
     DateTime,
+    Numeric,
     String,
     Text,
     UniqueConstraint,
@@ -26,6 +28,22 @@ class Employee(Abstract, TenantScoped):
         CheckConstraint(
             "employment_type IN ('employee', 'freelancer')",
             name="employment_type",
+        ),
+        CheckConstraint(
+            """
+            (
+                default_compensation_type IS NULL
+                AND default_compensation_rate IS NULL
+            )
+            OR
+            (
+                default_compensation_type IS NOT NULL
+                AND default_compensation_rate IS NOT NULL
+                AND default_compensation_type IN ('hourly', 'fixed')
+                AND default_compensation_rate > 0
+            )
+            """,
+            name="ck_employees_default_compensation_valid",
         ),
     )
 
@@ -58,6 +76,16 @@ class Employee(Abstract, TenantScoped):
 
     notes: Mapped[str | None] = mapped_column(
         Text,
+        nullable=True,
+    )
+
+    default_compensation_type: Mapped[str | None] = mapped_column(
+        String(20),
+        nullable=True,
+    )
+
+    default_compensation_rate: Mapped[Decimal | None] = mapped_column(
+        Numeric(12, 2),
         nullable=True,
     )
 

@@ -4,8 +4,12 @@ from app.api.v1.endpoints import (
     auth,
     clients,
     employees,
+    employee_compensation_payments,
     events,
     event_staff_assignments,
+    expenses,
+    expense_payments,
+    financial_audit_logs,
     health,
     quotes,
     payments,
@@ -22,8 +26,12 @@ api_router = APIRouter()
 api_router.include_router(auth.router, prefix="/auth")
 api_router.include_router(clients.router, prefix="/clients")
 api_router.include_router(employees.router, prefix="/employees")
+api_router.include_router(employee_compensation_payments.router, prefix="/employee-compensation-payments")
 api_router.include_router(events.router, prefix="/events")
 api_router.include_router(event_staff_assignments.router, prefix="/event-staff-assignments")
+api_router.include_router(expenses.router, prefix="/expenses")
+api_router.include_router(expense_payments.router, prefix="/expense-payments")
+api_router.include_router(financial_audit_logs.router, prefix="/financial-audit-logs")
 api_router.include_router(health.router, prefix="/health")
 api_router.include_router(quotes.router, prefix="/quotes")
 api_router.include_router(payments.router, prefix="/payments")
