@@ -2,8 +2,9 @@ Database Architecture
 Project: CaterFlow
 Document version: 0.2
 Status: Implementation-aligned specification
-Last updated: November 20, 2026
-1. Purpose
+Last updated: November 27, 2026
+
+### 1. Purpose
 This document defines the database architecture and data modeling principles for CaterFlow.
 
 It records both the database structures currently implemented and the intended direction for modules that have not yet been developed.
@@ -23,7 +24,8 @@ The database must support the operational and financial requirements of a multi-
 The model prioritizes consistency, maintainability, traceability, tenant isolation, and the ability to evolve as new business requirements emerge.
 
 Implementation note: The current backend has implemented identity and access foundations, clients, events, products, product categories, quotes, quote items, and the optional relationship between quote items and catalog products. Workforce, payments, expenses, tenant settings, and audit persistence remain planned work and must not be treated as existing database tables until implemented and migrated.
-2. Database Technology
+
+## 2. Database Technology
 CaterFlow uses PostgreSQL as its primary relational database.
 
 The backend interacts with PostgreSQL through:
@@ -32,7 +34,8 @@ The backend interacts with PostgreSQL through:
 - Pydantic for request and response validation.
 - Pytest for automated database and integration tests.
 The current local development environment uses PostgreSQL 17.
-2.1 Database Organization
+
+### 2.1 Database Organization
 The current architecture uses:
 - One PostgreSQL database per environment.
 - One shared schema.
@@ -43,7 +46,8 @@ The current architecture uses:
 Separate databases or schemas per tenant are not part of the MVP.
 
 PostgreSQL Row-Level Security (RLS) is deferred. Tenant isolation currently relies on the application database session, ORM filtering, service validation, authorization checks, and database constraints. RLS must not be described as active or relied upon by the current implementation.
-2.2 Database Design Principles
+
+### 2.2 Database Design Principles
 The database follows these principles:
 1. Tenant-owned records have explicit tenant ownership.
 2. Relationships between tenant-owned entities preserve tenant boundaries.
@@ -55,7 +59,8 @@ The database follows these principles:
 8. Destructive schema changes are handled carefully.
 9. Database models, API schemas, repositories, and services remain separate concerns.
 10. The schema evolves deliberately without unnecessary infrastructure complexity.
-3. Naming Conventions
+
+## 3. Naming Conventions
 The database uses consistent naming conventions.
 Element	Convention	Current example
 Tables	Plural, snake_case	clients, events, products
@@ -74,7 +79,8 @@ Indexes	SQLAlchemy/Alembic index names	Defined in the corresponding model or mig
 All table and column names are written in English.
 
 Constraint and index names should remain explicit and stable so that Alembic can manage schema changes predictably.
-4. Primary Keys and Identifiers
+
+## 4. Primary Keys and Identifiers
 Database entities use UUID primary keys through the shared abstract model.
 
 The common Abstract model defines:
@@ -84,7 +90,8 @@ The common Abstract model defines:
 UUIDs are suitable for API resources and multi-tenant applications.
 
 Identifiers are not authorization mechanisms. Every resource access must still be validated against the authenticated user, active tenant context, and required permission.
-5. Common Entity Fields
+
+## 5. Common Entity Fields
 The shared abstract model provides the following fields:
 Field	Type	Purpose
 id	UUID	Primary key
@@ -98,7 +105,8 @@ tenant_id	UUID	Owning tenant
 
 
 Not every entity is tenant-scoped. Users, tenants, and the global permission catalog are platform-level entities. Memberships, roles, role assignments, and business entities are tenant-scoped according to their models.
-5.1 Timestamps and Dates
+
+### 5.1 Timestamps and Dates
 Timestamp fields use timezone-aware database types. Application code must preserve timezone information when storing moments in time.
 
 Business dates that represent calendar dates rather than exact moments use DATE where appropriate. For example, quote validity uses a date.
@@ -108,11 +116,13 @@ The Event model currently stores starts_at and ends_at as timezone-aware timesta
 The default company timezone is intended to be Europe/Madrid, but tenant settings and a complete company-configuration module have not yet been implemented.
 
 Event scheduling and display must continue to account for local timezone and daylight-saving transitions.
-6. Multi-Tenant Data Model
+
+## 6. Multi-Tenant Data Model
 Tenant isolation is a fundamental database and application requirement.
 
 Every tenant-scoped entity must contain a non-null tenant_id. The backend assigns and validates tenant ownership using the authenticated tenant context. The frontend must not be trusted to determine ownership through an untrusted payload.
-6.1 Tenant Ownership
+
+### 6.1 Tenant Ownership
 The current ownership model is:
 Entity	Ownership	Implementation status
 users	Platform-level	Implemented
@@ -137,7 +147,8 @@ Business audit records	Tenant-scoped	Planned
 
 
 The exact table names above reflect the current SQLAlchemy models. The planned entities may be refined during implementation.
-6.2 Tenant-Scoped Relationships
+
+### 6.2 Tenant-Scoped Relationships
 Relationships between tenant-owned entities must preserve the same tenant ownership.
 
 Current examples include:
@@ -148,7 +159,8 @@ Current examples include:
 - A quote item can reference only a quote and, when provided, a product from the same tenant.
 - Membership-role and role-permission assignments must belong to the same tenant as their associated membership or role.
 Composite foreign keys are used where appropriate. Referenced tenant-owned tables expose a unique constraint on (tenant_id, id) so dependent tables can reference both values.
-6.3 Application-Level Tenant Isolation
+
+### 6.3 Application-Level Tenant Isolation
 The current implementation uses TenantSession for tenant-scoped database operations.
 
 Its responsibilities include:
@@ -160,7 +172,8 @@ Its responsibilities include:
 Tenant database access is provided through the tenant database dependency and the database session utilities. Authentication/bootstrap operations may use the standard database session where tenant context is not yet established.
 
 These protections are application-level controls. PostgreSQL RLS is not currently enabled.
-6.4 Composite Foreign Keys
+
+### 6.4 Composite Foreign Keys
 Composite foreign keys are used to prevent cross-tenant references at the database layer even if an application validation is missed.
 
 Examples include:
@@ -172,10 +185,13 @@ Examples include:
 - quote_items(tenant_id, quote_id) referencing quotes(tenant_id, id).
 - quote_items(tenant_id, product_id) referencing products(tenant_id, id) when product_id is not null.
 - membership_roles referencing memberships and roles using tenant-aware composite foreign keys.
-7. Core Domain Entities
+
+## 7. Core Domain Entities
 The database is organized around the following business domains. Each subsection distinguishes implemented structures from planned structures.
-7.1 Identity and Tenant Management
-Current entities:
+
+### 7.1 Identity and Tenant Management
+
+Current entities include:
 - users
 - tenants
 - memberships
@@ -184,21 +200,34 @@ Current entities:
 - role_permissions
 - membership_roles
 - refresh_tokens
+- platform_admins
+
 Responsibilities:
-- User identity and password hash storage.
-- Tenant records.
-- User membership in tenants.
-- Tenant roles and membership-role assignments.
+- Global user identity and password hash storage.
+- Tenant records and lifecycle state.
+- User membership in multiple tenants.
+- Tenant-scoped roles and membership-role assignments.
 - Global permission definitions and tenant role-permission assignments.
-- Refresh-token persistence and lifecycle support.
-The Permission catalog is global. Role records are tenant-scoped. Memberships may receive multiple roles, and effective permissions are the union of the permissions granted through those roles.
+- Refresh-token persistence and lifecycle management.
+- Platform administrator privileges.
 
-Authorization is based on permission codes, not role names. The backend validates permissions for protected operations.
+A User represents a global identity. The same user can belong to multiple tenants through separate Membership records and uses one global password.
 
-Password-reset and email-verification persistence, if required, must be modeled explicitly when those workflows are implemented; they must not be assumed to exist merely because they appear in future requirements.
+Membership represents the association between a User and a Tenant. Membership existence determines the association; it does not use an independent is_active flag.
+
+Platform administrator privileges are stored separately from tenant memberships. A platform administrator may exist without any tenant membership.
+
+The Platform Admin application manages global user identity, platform administrator privileges and tenant membership associations.
+
+Tenant administrators operate within their own tenant and must not modify global user identity or memberships belonging to other tenants.
+
+The Permission catalog is global. Role records are tenant-scoped. Memberships may receive multiple roles, and effective permissions are the union of permissions granted through those roles.
+
+Authorization is based on permission codes, not role names.
 
 Detailed authentication behavior is defined in AUTHENTICATION.md.
-7.2 Clients
+
+### 7.2 Clients
 Table: clients
 Status: Implemented
 
@@ -217,7 +246,8 @@ A client may have multiple quotes and events.
 Archived clients remain available for historical consultation but cannot be selected for new commercial operations unless reactivated, according to the current service rules.
 
 The current implementation uses a single address representation and does not yet provide a separate normalized table for multiple contacts or multiple addresses.
-7.3 Employees and Workforce
+
+### 7.3 Employees and Workforce
 Status: Planned — not yet implemented
 
 The intended domain may include:
@@ -236,13 +266,15 @@ An assignment is expected to connect an employee to an event and preserve:
 - Compensation method.
 - Agreed compensation amount.
 - Assignment status.
-7.3.1 Compensation Snapshots
+
+#### 7.3.1 Compensation Snapshots
 The agreed compensation should be stored as a snapshot in the relevant event assignment or compensation record.
 
 Changing an employee's current compensation rate must not modify historical assignments or previously calculated event costs.
 
 The exact representation of planned, calculated, and actual staff costs remains to be designed before financial reporting is implemented.
-7.4 Catalog: Products, Services, and Categories
+
+### 7.4 Catalog: Products, Services, and Categories
 Current tables:
 - product_categories
 - products
@@ -274,7 +306,8 @@ SKU uniqueness is enforced per tenant when an SKU is provided, using a partial u
 The category_id is optional. When present, a composite foreign key ensures that the category belongs to the same tenant.
 
 The catalog currently supports logical archiving through is_active. Archived products and services cannot be selected for new quote items.
-7.4.1 Product Categories
+
+#### 7.4.1 Product Categories
 product_categories supports:
 - Tenant ownership.
 - Category name and optional description.
@@ -283,7 +316,8 @@ product_categories supports:
 - Tenant-specific unique category names.
 - Composite self-referential foreign key to prevent cross-tenant parent relationships.
 A category cannot be archived while products or child categories still depend on it, according to the current service rules.
-7.4.2 Standardized Units
+
+#### 7.4.2 Standardized Units
 Units are currently defined as a static enum in application code, not as a database lookup table.
 
 The current values are:
@@ -298,11 +332,13 @@ The current values are:
 - day
 - service
 The allowed unit values are also validated by a database check constraint on products.
-7.4.3 Menus and Recipe Data
+
+#### 7.4.3 Menus and Recipe Data
 Dedicated menus, menu_items, recipe, and ingredient tables have not yet been implemented.
 
 They remain future modeling work. The current product catalog must not be described as a complete menu or inventory system.
-7.5 Quotes
+
+#### 7.5 Quotes
 Current tables:
 - quotes
 - quote_items
@@ -322,7 +358,8 @@ The presence of a status value does not imply that every corresponding workflow 
 Quote numbers are generated sequentially per tenant using a tenant-row lock during number generation.
 
 The quote model uses composite foreign keys to ensure that its client and optional event belong to the same tenant.
-7.5.1 Quote Items
+
+#### 7.5.1 Quote Items
 quote_items stores the lines of a quote.
 
 Current fields include:
@@ -344,7 +381,8 @@ created_at / updated_at	Timestamps inherited from the abstract model
 quantity uses NUMERIC(10, 2). Monetary line values use NUMERIC(12, 2).
 
 Database checks enforce positive quantity and non-negative unit and total prices.
-7.5.2 Catalog Link and Historical Snapshot
+
+#### 7.5.2 Catalog Link and Historical Snapshot
 product_id is optional so a quote item can be:
 - Linked to a product or service in the tenant catalog; or
 - Entered manually without a catalog relationship.
@@ -357,7 +395,12 @@ Changing or archiving the catalog product later does not recalculate or overwrit
 Quote duplication creates independent quote item records and preserves the optional product_id reference and the original snapshots. A duplicated quote therefore does not need to re-read current catalog values, including when the referenced product has subsequently been archived.
 
 The current design does not implement immutable quotation version tables or an approval snapshot table. Those are future capabilities and must be modeled explicitly if version history and formal approval are introduced.
-7.6 Events
+
+Quote duplication creates a new independent quote record and new quote item records. The duplicated items preserve their original commercial snapshots and optional catalog references.
+
+The current implementation does not provide immutable quotation version tables or a separate approval snapshot table. Formal approval evidence, immutable versions and conversion from an approved quotation into an event remain future capabilities.
+
+### 7.6 Events
 Table: events
 Status: Implemented as an independent event-management module
 

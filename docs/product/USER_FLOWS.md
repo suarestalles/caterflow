@@ -3,34 +3,49 @@ Version: 0.2
 Status: Updated against current backend implementation
 Product: CaterFlow SaaS
 Initial market: Spain
-Last updated: November 20, 2026
-1. Purpose
+Last updated: November 27, 2026
+
+## 1. Purpose
 This document describes the main user journeys and operational workflows planned for CaterFlow and records their current implementation status.
 
 It establishes how users interact with the platform, how business processes progress, and how information moves between the commercial, operational and financial areas.
 
 These flows guide interface design, backend implementation and database modeling.
-1.1 Implementation status convention
+
+### 1.1 Implementation status convention
 The status shown in this document describes the current implementation, not only the intended product behavior:
 - Implemented — Backend: the corresponding backend models, business rules and API capabilities are implemented and covered by automated tests. This does not imply that a frontend screen is available.
 - Partially implemented — Backend: some of the workflow is implemented, but one or more important steps or business transitions remain unavailable.
 - Planned: the workflow is part of the product direction but has not yet been implemented.
 - Decision pending: the workflow requires a business decision before implementation.
 The current development has prioritized the backend. Unless explicitly stated otherwise, this document does not claim that the frontend user interface, production deployment or end-to-end browser experience is complete.
-2. User Profiles
+
+## 2. User Profiles
 The following profiles describe the intended users of CaterFlow. Their presence in this document does not mean that every profile-specific interface or workflow has already been implemented.
-2.1 Platform Administrator
-Responsible for the SaaS platform itself.
+
+### 2.1 Platform Administrator
+
+Responsible for managing the SaaS platform itself.
 
 Main activities:
-- Manage tenant accounts.
-- Monitor platform operation.
-- Manage subscription-related settings when implemented.
-- Provide platform-level support.
-Platform administrators must not automatically have unrestricted access to tenant business information.
+- Authenticate through the dedicated Platform Admin login.
+- View the platform dashboard.
+- Create, list, update, suspend and activate tenant accounts.
+- Create and manage global users.
+- Activate and deactivate global users.
+- Grant or revoke Platform Admin privileges.
+- Assign users to one or more tenants.
+- Remove user memberships from tenants.
 
-Implementation status: platform-level authentication foundations exist. A complete platform administration and support workflow remains planned.
-2.2 Company Owner
+Implementation status: Implemented.
+
+The Platform Admin application provides protected routes and interfaces for tenant and global user management.
+
+Platform administrators do not automatically have access to tenant business data. Explicit tenant membership is required for tenant-level access.
+
+Global user deactivation revokes refresh tokens. Safeguards prevent deactivation of the last active Platform Admin and the last Owner of a tenant.
+
+### 2.2 Company Owner
 Responsible for the catering company's overall operation.
 
 Main activities:
@@ -39,8 +54,9 @@ Main activities:
 - Manage customers, quotations, catalog items and events.
 - Monitor payments and expenses.
 - Access financial reports.
-Implementation status: tenant membership and permission foundations exist. Backend capabilities for customers, catalog items, quotations and events are available. Company profile configuration, payments, expenses and financial reports remain pending.
-2.3 Company Administrator
+Implementation status: Backend foundations and core business modules are implemented, including customer management, catalog, quotations, events, workforce and payments. Company configuration, expenses, reporting and the complete tenant-facing application remain pending.
+
+### 2.3 Company Administrator
 Responsible for company configuration and administrative operations.
 
 Main activities:
@@ -48,8 +64,9 @@ Main activities:
 - Configure company settings.
 - Manage catalogs and pricing.
 - Access authorized business information.
-Implementation status: role and permission management foundations exist. Complete company settings and the full administrative user experience remain pending.
-2.4 Manager
+Implementation status: Tenant-scoped roles and permissions are implemented. Global user identity and cross-tenant membership administration belong to the Platform Admin context. Complete tenant-facing user, company configuration and business administration interfaces remain pending.
+
+### 2.4 Manager
 Responsible for commercial and operational coordination.
 
 Main activities:
@@ -58,8 +75,9 @@ Main activities:
 - Coordinate event preparation.
 - Assign employees.
 - Track payments and expenses.
-Implementation status: customer, quotation and basic event backend workflows are available subject to permissions. Employee assignments, payments and expenses remain planned.
-2.5 Chef
+Implementation status: Backend capabilities are available for customer, catalog, quotation, event, workforce and payment management, subject to permissions. Expenses, reporting and the tenant-facing management interfaces remain pending.
+
+### 2.5 Chef
 Responsible for food preparation and kitchen coordination.
 
 Main activities:
@@ -68,7 +86,8 @@ Main activities:
 - Review guest counts and operational requirements.
 - Coordinate kitchen activities.
 Implementation status: planned. Dedicated employee access, assignments and kitchen workflows have not yet been implemented.
-2.6 Fixed Employee
+
+### 2.6 Fixed Employee
 Responsible for performing assigned event activities.
 
 Main activities:
@@ -77,7 +96,8 @@ Main activities:
 - Access relevant operational information.
 - Record working hours when authorized.
 Implementation status: planned. Employee registration, employee-specific access and assignment workflows have not yet been implemented.
-2.7 Freelancer
+
+### 2.7 Freelancer
 Responsible for temporary event assignments.
 
 Main activities:
@@ -88,13 +108,15 @@ Main activities:
 Employee access must be restricted to information required for their responsibilities.
 
 Implementation status: planned. Freelancer registration, access and assignment workflows have not yet been implemented.
-2.8 Roles and permissions
+
+### 2.8 Roles and permissions
 The backend uses permission codes to authorize operations. Authorization must not depend on a role's display name. A user may have multiple roles within a tenant, and the effective permissions are derived from those assignments.
 
 The current permission system includes tenant-scoped roles, memberships and role-permission assignments. The Owner default role receives the available permissions; other default role grants are limited according to the permission catalog.
 
 The intended personas above must be mapped to permissions as the product's user and workforce workflows are implemented. Chef, fixed employee and freelancer access policies remain to be defined.
-3. Main Event Lifecycle
+
+## 3. Main Event Lifecycle
 The intended end-to-end CaterFlow workflow is:
 1. Customer registration.
 2. Event request registration.
@@ -114,8 +136,10 @@ The customer, catalog, quotation and basic event modules are implemented. Howeve
 - Events can be created and managed independently, but conversion from an approved quotation into an event is not implemented.
 - Employee planning, payments, expenses, dashboards and event financial closure remain planned.
 The implemented event status transitions are described in Section 7.3. The workflow must not be presented as an end-to-end operational process until the missing dependencies are delivered.
-4. Customer Management Flow
-4.1 Register a Customer
+
+## 4. Customer Management Flow
+
+### 4.1 Register a Customer
 Actor: Owner, Administrator or Manager, subject to assigned permissions.
 Implementation status: Implemented — Backend.
 
@@ -131,7 +155,8 @@ Expected backend result:
 - The customer can be associated with quotations and events.
 - Customer records can be listed, searched, retrieved and updated through the API.
 - Customer records support individual and company customer types.
-4.2 Update Customer Information
+
+### 4.2 Update Customer Information
 Implementation status: Implemented — Backend.
 
 Steps:
@@ -140,7 +165,8 @@ Steps:
 3. Submit the permitted changes.
 4. Save the changes.
 Customer updates must not delete or cascade-delete related quotations or events. The current quotation and event models retain their customer references; a full immutable snapshot of every customer profile field is not currently implemented.
-4.3 Archive a Customer
+
+### 4.3 Archive a Customer
 Implementation status: Implemented — Backend.
 
 Steps:
@@ -151,8 +177,10 @@ Expected result:
 - The customer is not physically deleted.
 - Existing quotations and events remain available.
 - Archived customers cannot be selected for new operations that require an active customer.
-5. Catalog Management Flow
-5.1 Manage Product Categories
+
+## 5. Catalog Management Flow
+
+### 5.1 Manage Product Categories
 Actor: Owner, Administrator or another user with the relevant category permissions.
 Implementation status: Implemented — Backend.
 
@@ -168,7 +196,8 @@ Rules:
 - A category cannot be its own parent or create a hierarchy cycle.
 - A category must be active when selected for a new or updated product.
 - A category that still has products or child categories cannot be archived.
-5.2 Register a Product or Service
+
+### 5.2 Register a Product or Service
 Actor: Owner, Administrator or another user with the relevant product permissions.
 Implementation status: Implemented — Backend.
 
@@ -188,7 +217,8 @@ Expected backend result:
 - Monetary values use decimal precision and cannot be negative.
 - SKU uniqueness is enforced within the tenant when a SKU is provided.
 - Products and services can be listed, searched, filtered, retrieved and updated.
-5.3 Archive a Product or Service
+
+### 5.3 Archive a Product or Service
 Implementation status: Implemented — Backend.
 
 Steps:
@@ -196,12 +226,15 @@ Steps:
 2. Request the archive operation.
 3. The backend sets the item as inactive.
 Archived products and services cannot be added to new quotation items. Existing quotation items retain their snapshots and references. Catalog archiving does not rewrite historical quotation data.
-5.4 Menus, Recipes and Inventory
+
+### 5.4 Menus, Recipes and Inventory
 Implementation status: Planned.
 
 Menu packages, menu composition, recipe information, ingredient-level costing and inventory movements have not been implemented. The current catalog supports individual products and services with categories and units; it must not be described as a complete menu or inventory system.
-6. Quotation Management Flow
-6.1 Create a Quotation
+
+## 6. Quotation Management Flow
+
+### 6.1 Create a Quotation
 Actor: Owner, Administrator or Manager, subject to quotes.create.
 Implementation status: Implemented — Backend.
 
@@ -228,7 +261,8 @@ Expected backend result:
 - The quotation has at least one item.
 - The backend calculates item totals and quotation totals using decimal arithmetic.
 - A discount greater than the subtotal is rejected.
-6.2 Quotation Item Snapshot
+
+### 6.2 Quotation Item Snapshot
 Implementation status: Implemented — Backend.
 
 Each quotation item stores its own commercial information, including name, description, unit, quantity, unit price and total price. product_id is optional and records the catalog reference when one was used.
@@ -236,7 +270,8 @@ Each quotation item stores its own commercial information, including name, descr
 Changes to a product or service after quotation creation must not silently change the existing quotation item's stored name, description, unit or price. The catalog relationship is a reference, not the source from which historical quotation values are recalculated on every read.
 
 A catalog item's negotiated price is stored on the quotation item and does not change the catalog's sale price.
-6.3 Update a Quotation
+
+### 6.3 Update a Quotation
 Implementation status: Implemented — Backend, with limitations.
 
 Steps:
@@ -253,7 +288,8 @@ Rules and limitations:
 - The backend recalculates subtotal, discount, tax and total.
 - This operation updates the draft; it does not create an immutable quotation version.
 - Historical versioning and revision comparison remain planned.
-6.4 Send a Quotation
+
+### 6.4 Send a Quotation
 Implementation status: Implemented — Backend.
 
 Steps:
@@ -261,7 +297,8 @@ Steps:
 2. Request the send operation.
 3. The backend changes its status to sent.
 The current operation records the status transition. Email delivery, PDF generation, external sharing and customer-side confirmation are not part of the implemented flow.
-6.5 Record Customer Approval or Rejection
+
+### 6.5 Record Customer Approval or Rejection
 Implementation status: Planned.
 
 The quotation status model includes values such as accepted, rejected, expired and cancelled, but a complete approval/rejection workflow is not implemented.
@@ -272,13 +309,15 @@ The planned manual workflow remains:
 3. Record the decision, date and responsible company user.
 4. Preserve supporting information and the approved commercial terms.
 Customer self-service approval remains outside the initial MVP unless the scope is changed.
-6.6 Quotation Versions and Revisions
+
+### 6.6 Quotation Versions and Revisions
 Implementation status: Planned.
 
 The current update operation edits a draft quotation; it does not create a new immutable version. The duplicate operation creates an independent draft copy, not a version in a linked revision history.
 
 A future versioning workflow must preserve previous versions, identify the approved version and prevent approved commercial information from being silently overwritten.
-6.7 Duplicate a Quotation
+
+### 6.7 Duplicate a Quotation
 Implementation status: Implemented — Backend.
 
 Steps:
@@ -288,7 +327,8 @@ Steps:
 4. The duplicated quotation starts in draft status.
 5. The quotation items are copied as independent records.
 The duplicate preserves item catalog references when present and copies the stored snapshots, quantities, negotiated prices, totals and positions. It does not re-read the current catalog to recalculate historical item values. Therefore, a quotation can be duplicated even if a referenced catalog item has since been archived.
-6.8 Generate a Quotation PDF
+
+### 6.8 Generate a Quotation PDF
 Implementation status: Planned.
 
 The future workflow is:
@@ -299,8 +339,10 @@ The future workflow is:
 5. Store or retrieve the document securely.
 6. Make it available for external sharing.
 PDF generation, company branding, document storage and delivery are not currently implemented.
-7. Event Management Flow
-7.1 Create an Event
+
+## 7. Event Management Flow
+
+### 7.1 Create an Event
 Actor: Owner, Administrator or Manager, subject to event permissions.
 Implementation status: Implemented — Backend, independently of quotation conversion.
 
@@ -319,11 +361,13 @@ Expected backend result:
 - The initial status is draft unless another allowed status is explicitly provided by the implemented operation.
 - The event stores a country code, with ES as the model default.
 The current event model does not represent a completed operational conversion from an approved quotation. An event may be associated with a customer and can optionally be linked to a quotation in future workflow development, but the approved-quotation conversion process is not implemented.
-7.2 Retrieve, List and Update an Event
+
+### 7.2 Retrieve, List and Update an Event
 Implementation status: Implemented — Backend.
 
 Users with the appropriate permissions can list and retrieve tenant-scoped events and update permitted event information. Cross-tenant records are not exposed.
-7.3 Monitor Event Status
+
+### 7.3 Monitor Event Status
 Implementation status: Implemented — Backend, with a limited status workflow.
 
 The implemented statuses are:
@@ -338,7 +382,8 @@ cancelled	Event has been cancelled
 The backend validates status changes. The implemented progression is draft → confirmed → in_progress → completed. Cancellation is allowed from draft, confirmed or in_progress. Completed and already cancelled events cannot be cancelled again.
 
 The broader operational planning stages such as staffing, preparation checklists and kitchen coordination remain planned.
-7.4 Convert an Approved Quotation into an Event
+
+### 7.4 Convert an Approved Quotation into an Event
 Implementation status: Planned.
 
 The intended workflow is:
@@ -348,13 +393,15 @@ The intended workflow is:
 4. Confirm event creation.
 5. Open the resulting event.
 The conversion must be idempotent and preserve the approved commercial snapshot. This workflow cannot be completed today because quotation approval/versioning and the conversion operation have not yet been implemented.
-7.5 Plan an Event
+
+### 7.5 Plan an Event
 Implementation status: Planned.
 
 The future workflow includes reviewing event date, location and guest count; reviewing approved menus and services; defining operational requirements; assigning employees; and recording responsibilities and schedules.
 
 Employee assignment, staffing overview, planned/actual hours and kitchen planning are not currently implemented.
-7.6 Cancel an Event
+
+### 7.6 Cancel an Event
 Implementation status: Implemented — Backend, with limited cancellation information.
 
 Steps:
@@ -363,54 +410,68 @@ Steps:
 3. The backend validates that the current status permits cancellation.
 4. The event status changes to cancelled.
 The event is not physically deleted. A complete cancellation-reason workflow and financial consequences such as refunds or cancellation charges remain planned.
-7.7 Operational and Financial Closure
+
+### 7.7 Operational and Financial Closure
 Implementation status: Planned.
 
 Operational completion and financial settlement must remain independent concepts. The current event workflow supports the completed status, but it does not implement a separate financial closure, reconciliation or reopening workflow.
-8. Employee Management Flow
-8.1 Register an Employee
-Implementation status: Planned.
 
-The intended workflow is:
-1. Open the Employees section.
-2. Select fixed employee or freelancer.
-3. Enter personal and contact information.
-4. Configure relevant compensation information.
-5. Save the employee record.
-Employee records, employee-specific authentication and workforce administration have not yet been implemented.
-8.2 Assign an Employee to an Event
-Implementation status: Planned.
+## 8. Workforce Management Flow
 
-The future workflow includes selecting an employee, defining responsibility and planned schedule, recording agreed compensation conditions and confirming the assignment.
-8.3 Replace an Assigned Employee
-Implementation status: Planned.
+Implementation status: Implemented — Backend; frontend pending.
 
-The future workflow must preserve the original assignment history, record the replacement and retain separate compensation conditions for the replacement assignment.
-8.4 Record Working Hours
-Implementation status: Planned.
+### 8.1 Register an Employee
 
-Planned and actual hours must be distinguishable. Corrections must be authorized and auditable. Missing hour records must not be silently treated as zero.
-9. Payment Management Flow
-9.1 Generate Payment Installments
-Implementation status: Planned.
+The backend supports workforce registration and the employee information required by the implemented workforce model.
 
-The intended workflow is:
-1. Retrieve the payment configuration applicable to the approved commercial agreement.
-2. Generate installment amounts and due dates.
-3. Reconcile installments with the approved quotation amount.
-4. Associate the schedule with the event or relevant obligation.
-Payment schedules and installment persistence have not yet been implemented. The trigger for generation (quotation approval or event conversion) remains a business decision.
-9.2 Record a Payment
-Implementation status: Planned.
+The workforce model supports fixed employees and freelancers, with relevant compensation information.
 
-Payment registration, partial payments, payment methods, installment balances and outstanding balances have not yet been implemented.
-9.3 Handle Overdue Payments
-Implementation status: Planned.
+### 8.2 Assign an Employee to an Event
 
-Overdue identification and follow-up workflows depend on payment installment functionality and are not currently available.
-10. Event Expense Management Flow
-10.1 Record an Expense
-Implementation status: Planned.
+The backend supports event workforce assignments.
+
+Assignments preserve the relevant employee and compensation information required by the implemented business rules.
+
+### 8.3 Manage Assignment Compensation
+
+The workforce implementation supports compensation information associated with assignments.
+
+Historical compensation information must remain consistent when default employee compensation settings change.
+
+### 8.4 Workforce Operational Interface
+
+The backend functionality is implemented, but the complete tenant-facing employee and event staffing interfaces remain pending.
+
+Dedicated employee and freelancer login experiences are not included in the current frontend implementation.
+
+## 9. Payment Management Flow
+
+Implementation status: Implemented — Backend; frontend pending.
+
+### 9.1 Manage Payment Installments
+
+The backend supports payment installment management and the corresponding financial records.
+
+Installments must preserve their monetary values and due-date information according to the implemented payment rules.
+
+### 9.2 Record a Payment
+
+The backend supports payment registration and tracking.
+
+Payment records are used to determine the corresponding paid amounts and outstanding balances.
+
+### 9.3 Track Payment Status
+
+The backend supports payment status handling and the financial state of payment records.
+
+Payment status remains independent of event operational status.
+
+The complete tenant-facing payment management interface and end-to-end financial reconciliation remain pending.
+
+## 10. Event Expense Management Flow
+
+### 10.1 Record an Expense
+Implementation status: Planned — next backend module.
 
 The intended workflow is:
 1. Open an event.
@@ -420,22 +481,30 @@ The intended workflow is:
 5. Optionally attach a receipt.
 6. Save the expense.
 Expense records, categories, receipt attachments and expense permissions have not yet been implemented.
-10.2 Review Event Financial Results
-Implementation status: Planned.
+
+### 10.2 Review Event Financial Results
+Implementation status: Planned. The backend already provides payment and workforce foundations. Complete event financial results still depend on Expenses and the subsequent reconciliation logic.
 
 A financial summary must distinguish approved quotation value, payments received, outstanding balances, actual expenses and estimated/actual results. These calculations depend on payment and expense modules that remain pending.
-11. Event Closure Flow
-Implementation status: Planned, except for the event completed status.
+
+## 11. Event Closure Flow
+Implementation status: Partially implemented.
+
+The backend supports event status management, workforce management and payment tracking.
+
+The complete closure process remains pending because expense registration and financial reconciliation are not yet available.
 
 The intended workflow is:
 1. Confirm that event execution has finished.
-2. Review employee hours.
+2. Review employee assignments and compensation information.
 3. Review recorded expenses.
 4. Review payments and outstanding balances.
 5. Review the financial summary.
 6. Perform operational closure and, separately, financial reconciliation where applicable.
-The current backend can mark an eligible event as completed, but it does not perform the complete closure process described above. Corrections after closure, reopening and financial settlement workflows remain pending.
-12. Dashboard Flow
+
+Event completion must not automatically imply financial settlement.
+
+## 12. Dashboard Flow
 Implementation status: Planned.
 
 The intended flow is:
@@ -445,7 +514,8 @@ The intended flow is:
 4. The user reviews relevant indicators.
 5. The user navigates to events, quotations, payments or expenses.
 Dashboard APIs, aggregated indicators and dashboard interface have not yet been implemented. Any future dashboard must respect tenant isolation and backend permissions.
-13. Tenant and Company Context
+
+## 13. Tenant and Company Context
 Implementation status: Partially implemented — Backend.
 
 The current backend provides:
@@ -466,7 +536,8 @@ The membership model supports a user having memberships in multiple tenants. A c
 Tenant isolation currently relies on application/backend enforcement. PostgreSQL Row-Level Security (RLS) has explicitly been deferred and is not part of the current implementation.
 
 Company profile configuration, branding, default currency/language/timezone settings and a complete company onboarding interface remain planned.
-14. Authentication and Authorization Flow
+
+## 14. Authentication and Authorization Flow
 Implementation status: Implemented — Backend foundations.
 
 The current backend includes credential/security foundations, access-token validation, refresh-token persistence/lifecycle components, user identities, tenant memberships and permission-based authorization.
@@ -481,7 +552,8 @@ The intended protected-request flow is:
 Current API behavior includes authentication rejection for unauthenticated requests, permission rejection for users lacking the required permission, and tenant-scoped resource lookup. The exact user-facing login, refresh, logout and tenant-switch screens remain frontend work.
 
 Authorization is based on permission codes, not role names. The backend remains the source of truth; frontend visibility restrictions alone are insufficient.
-15. Internationalization Flow
+
+## 15. Internationalization Flow
 Implementation status: Planned.
 
 The intended flow is:
@@ -491,7 +563,8 @@ The intended flow is:
 4. Generated documents use the selected document language.
 5. Company-specific defaults are applied where appropriate.
 Initial supported product languages are Portuguese, Spanish and English. A complete translation system, language selection experience, locale-aware frontend formatting and multilingual PDF generation have not yet been implemented. The event model's default country code ES does not, by itself, mean that localization is complete.
-16. Error and Exception Scenarios
+
+## 16. Error and Exception Scenarios
 The backend must handle at least the following cases. The listed HTTP statuses describe the current API behavior where the relevant operation is implemented; planned workflows will require their own error contracts.
 Scenario	Current behavior/status
 Unauthenticated request to protected endpoint	401 Unauthorized
@@ -515,7 +588,8 @@ Additional planned scenarios include:
 - Invalid or incomplete expense records.
 - Unauthorized modifications to closed events.
 Errors must be communicated clearly without exposing sensitive technical information.
-17. Open Questions and Decisions
+
+## 17. Open Questions and Decisions
 The following items remain open or require product validation before their related workflows are implemented:
 1. Tenant membership: the data model supports one user belonging to multiple tenants. The complete tenant-selection and switching experience must still be defined and delivered.
 2. Employee accounts: should employees have individual login accounts in the MVP, or should some companies manage them only through administrative accounts?
@@ -531,7 +605,8 @@ The following items remain open or require product validation before their relat
 12. Quotation versioning: should every revision create a new immutable version, and how should an approved version be locked?
 13. Payment schedule trigger: should installments be generated at quotation approval or only when the quotation is converted into an event?
 14. Audit history: which operations require audit events and what retention policy applies?
-18. Current Workflow Readiness Summary
+
+## 18. Current Workflow Readiness Summary
 Workflow	Backend status	Main remaining work
 Authentication and authorization	Implemented foundations	Complete frontend experience and release validation
 Tenant context and isolation	Partially implemented	Company onboarding and complete tenant switching experience
@@ -550,8 +625,7 @@ Financial dashboards and reporting	Planned	Aggregations and reporting APIs/UI
 Localization	Planned	Translation and locale-aware experience
 Audit history	Planned	Audit model, capture and review workflows
 
-
-19. Final Principles
+## 19. Final Principles
 CaterFlow user flows must remain consistent with the backend business rules and permission model.
 
 A flow must not be considered implemented merely because it appears in this document or because a data model contains a related status or field. Completion requires the relevant backend behavior, authorization, tenant isolation, tests and any required interface to be validated.

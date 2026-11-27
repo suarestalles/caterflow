@@ -1,13 +1,14 @@
 CaterFlow — MVP Scope
 Version: 0.2
-Status: In implementation — core backend modules implemented; MVP not yet ready for pilot validation
+Status: In implementation — core backend modules implemented; tenant-facing frontend and remaining MVP workflows pending
 Product: CaterFlow SaaS
 Initial Market: Spain
 Deployment Model: Cloud SaaS (target)
-Supported Languages: Portuguese, Spanish and English (planned; not yet implemented)
+Supported Languages: Portuguese, Spanish and English (frontend localization foundation implemented; complete translation coverage pending)
 
-Last updated: November 20, 2026
-1. MVP Objective
+Last updated: November 27, 2026
+
+## 1. MVP Objective
 The objective of the CaterFlow MVP is to deliver a functional catering management platform that centralizes the essential commercial, operational and financial workflows of small and medium-sized catering companies.
 
 The MVP is intended to provide sufficient functionality for a real catering company to manage its customers, quotations, events, employees, payments and expenses without relying on disconnected spreadsheets and paper-based processes.
@@ -15,22 +16,25 @@ The MVP is intended to provide sufficient functionality for a real catering comp
 The first release will prioritize reliability, usability, data security and operational efficiency.
 
 Current implementation status: The backend foundation and initial customer, event, catalog and quotation workflows are implemented. The complete commercial-to-operational-to-financial workflow is not yet available, and the platform is not ready for pilot validation.
-2. Target Users
+
+## 2. Target Users
 The MVP is intended to support the following user profiles:
-Profile	Description	Current status
-Platform Administrator	Manages the SaaS platform and its tenants	Platform authentication/authorization foundations exist; full platform administration workflows remain pending
-Company Owner	Manages company configuration and business operations	Tenant, membership and permission foundations are implemented; company settings remain pending
-Company Administrator	Manages users, settings and company data	RBAC foundations are implemented; complete user and company administration workflows remain pending
-Manager	Manages customers, quotations, events and finances	Backend permissions and initial customer, event and quotation APIs are implemented; financial workflows remain pending
-Chef	Accesses menus and operational event information	Not implemented; depends on menu and operational modules
-Fixed Employee	Accesses assigned events and work information	Not implemented; depends on workforce management
-Freelancer	Accesses assigned events and work information	Not implemented; depends on workforce management
+Profile	Current status
+Platform Administrator	Platform authentication and administration workflows implemented; tenant and global user management available through the Platform Admin frontend.
+Company Owner	Tenant, membership, permission, workforce and payment backend foundations implemented; company settings and remaining business workflows pending.
+Company Administrator	Tenant-scoped RBAC implemented; complete tenant-facing user and company configuration interfaces pending.
+Manager	Backend APIs available for customers, catalog, quotations, events, workforce and payments; expenses and reporting pending.
+Chef	Dedicated kitchen and menu workflows pending.
+Fixed Employee	Workforce backend implemented; dedicated employee-facing access and interface pending.
+Freelancer	Workforce backend implemented; dedicated freelancer-facing access and interface pending.
 
 
 Permissions are managed through backend role-based access control (RBAC), using permission codes rather than authorization based on role names. The permission system supports tenant-specific roles and multiple roles per membership. The complete set of user-facing workflows for every target profile is still pending.
-3. Functional Scope
+
+## 3. Functional Scope
 The status labels below distinguish implemented backend behavior from planned functionality. A module is not considered fully complete merely because its initial API or data model exists.
-3.1 Tenant and Company Management
+
+### 3.1 Tenant and Company Management
 Priority: P0 — Essential
 Implementation status: Partially implemented
 
@@ -47,7 +51,8 @@ Pending:
 - User invitations and complete membership management workflows.
 - Tenant-specific application settings and company branding interface.
 Each company must access only its own data. Application-level tenant isolation is implemented and covered by automated tests. PostgreSQL Row-Level Security (RLS) is deferred; it is not part of the current implementation.
-3.2 Authentication and Access Control
+
+### 3.2 Authentication and Access Control
 Priority: P0 — Essential
 Implementation status: Partially implemented
 
@@ -66,7 +71,8 @@ Pending or requiring completion before release:
 - Complete user invitation and account activation workflows.
 - Final review of logout, token revocation and session lifecycle against the release requirements.
 - Authentication rate limiting and production security hardening.
-3.3 Customer Management
+
+### 3.3 Customer Management
 Priority: P0 — Essential
 Implementation status: Backend implemented
 
@@ -83,7 +89,8 @@ Pending or not yet confirmed as complete:
 - Complete billing and tax-information workflows required by the initial market.
 - Customer history and a consolidated customer activity view.
 - Frontend customer management interface.
-3.4 Catalog Management
+
+### 3.4 Catalog Management
 Priority: P0 — Essential
 Implementation status: Core catalog backend implemented; menu-related functionality pending
 
@@ -105,7 +112,8 @@ Pending:
 - Recipe and technical information, if confirmed as necessary for the MVP.
 - Frontend catalog and menu management interfaces.
 The current catalog is intentionally based on one Product model for both products and services. Ingredient-level costing and inventory control remain excluded from the MVP.
-3.5 Pricing Configuration
+
+### 3.5 Pricing Configuration
 Priority: P0 — Essential
 Implementation status: Partially implemented
 
@@ -123,7 +131,8 @@ Pending:
 - Optional additional charges and reusable commercial pricing configurations.
 - Frontend pricing configuration.
 Pricing adjustments made on a quotation do not update the catalog price.
-3.6 Quotation Management
+
+### 3.6 Quotation Management
 Priority: P0 — Essential
 Implementation status: Core quotation backend implemented; approval, versioning and document workflows pending
 
@@ -153,7 +162,8 @@ Pending:
 - Multiple commercial proposals or alternatives within a quotation workflow.
 - Frontend quotation editor and customer-facing approval experience.
 Historical integrity rule: quotation items store their own commercial snapshots. Changing or archiving a catalog product must not rewrite existing quotation item names, descriptions, units or prices. Catalog association is optional so manually defined items remain supported.
-3.7 Event Management
+
+### 3.7 Event Management
 Priority: P0 — Essential
 Implementation status: Basic event management backend implemented; quotation conversion and workforce workflows pending
 
@@ -174,50 +184,69 @@ Pending:
 - Planned and actual working hours.
 - Complete event history/audit timeline.
 - Frontend event management and operational planning interface.
-3.8 Employee Management
-Priority: P0 — Essential
-Implementation status: Not implemented
 
-Planned scope:
-- Register fixed employees and freelancers.
-- Store contact information.
-- Define employee type.
-- Configure compensation information where applicable.
-- Assign employees to events.
-- Define employee responsibilities.
-- Record working hours.
-- Maintain assignment history.
-Historical event costs must not change when an employee's default compensation settings are updated.
-3.9 Payment Management
-Priority: P0 — Essential
-Implementation status: Not implemented
+### 3.8 Employee and Workforce Management
 
-Planned scope:
-- Configure payment schedules.
-- Define installment percentages and due dates.
-- Generate installments associated with approved quotations or events.
-- Record payments manually.
-- Track outstanding balances.
-- Display overdue installments.
-Payment processing through external providers remains excluded from the initial MVP.
-3.10 Event Expense Management
 Priority: P0 — Essential
-Implementation status: Not implemented
+
+Implementation status: Backend implemented; frontend pending.
+
+Implemented:
+- Workforce data management.
+- Support for fixed employees and freelancers.
+- Employee-related information and compensation configuration.
+- Event workforce assignments.
+- Compensation information associated with assignments.
+- Preservation of historical compensation information where applicable.
+- Tenant-scoped access control and backend permission enforcement.
+- Automated backend tests for the implemented workforce functionality.
+
+Pending:
+- Complete tenant-facing employee management interface.
+- Complete event staffing interface.
+- Dedicated employee and freelancer access workflows.
+- Any additional workforce rules identified during operational validation.
+
+Historical event compensation must not be silently changed when default employee compensation settings are updated.
+
+### 3.9 Payment Management
+
+Priority: P0 — Essential
+
+Implementation status: Backend implemented; frontend pending.
+
+Implemented:
+- Payment-related persistence and business logic.
+- Payment installment management.
+- Payment registration.
+- Tracking of payment amounts and outstanding balances.
+- Payment status handling.
+- Tenant-scoped access control and backend permission enforcement.
+- Automated backend tests for the implemented payment functionality.
+
+Pending:
+- Complete payment management interface.
+- Integration with the final quotation approval and event-conversion workflow.
+- Financial reconciliation across payments, expenses and event results.
+- External payment provider integrations, which remain outside the initial MVP.
+
+Payment records must preserve financial history. Payment status must remain independent from event operational status.
+
+### 3.10 Event Expense Management
+
+Priority: P0 — Essential
+
+Implementation status: Not started — next backend module.
 
 Planned scope:
 - Record actual event expenses.
 - Categorize expenses.
 - Record descriptions, amounts and dates.
-- Associate expenses with responsible users.
-- Support optional receipt attachments.
-Initial expense categories:
-- Food and ingredients.
-- Beverages.
-- Staff.
-- Transportation.
-- Other expenses.
-The MVP will not require individual ingredient prices or inventory movements.
-3.11 Dashboard and Basic Reports
+- Associate expenses with events.
+- Associate expenses with responsible users where applicable.
+- Support optional receipt attachments when storage infrastructure is available.
+
+### 3.11 Dashboard and Basic Reports
 Priority: P1 — Important
 Implementation status: Not implemented
 
@@ -228,7 +257,8 @@ Planned scope:
 - Display recorded expenses.
 - Display estimated versus actual event results.
 Financial indicators must clearly distinguish estimated values from recorded actual values. Dashboard values must be derived from tenant-scoped source records.
-3.12 Audit History
+
+### 3.12 Audit History
 Priority: P0 — Essential
 Implementation status: Not implemented as a dedicated audit-history module
 
@@ -240,7 +270,8 @@ Planned scope:
 - Record expense creation and updates.
 - Associate changes with users and timestamps.
 The presence of standard created_at and updated_at timestamps does not satisfy the audit-history requirements above.
-4. Internationalization
+
+## 4. Internationalization
 Priority: P0 — Essential
 Implementation status: Not implemented in the user interface
 
@@ -256,7 +287,8 @@ Requirements:
 - Generated PDFs must support the selected document language.
 - Translation keys must be centralized and maintainable.
 The initial market is Spain. EUR is the intended initial default currency, with currency configuration designed to support future markets. Current decimal monetary storage does not, by itself, constitute multi-currency support or locale-aware formatting.
-5. Cloud Deployment
+
+## 5. Cloud Deployment
 Priority: P0 — Essential
 Implementation status: Local development foundation exists; production cloud deployment pending
 
@@ -277,7 +309,8 @@ Pending:
 - Production file storage abstraction and secure document retrieval.
 - Production environment and secrets configuration.
 - Responsive web application accessible through modern desktop and mobile browsers.
-6. MVP Exclusions
+
+## 6. MVP Exclusions
 The following capabilities are not required for the initial release unless pilot validation changes their priority:
 Feature	Reason
 Public marketplace	Requires a separate commercial and customer acquisition strategy
@@ -294,12 +327,14 @@ Custom code per tenant	The product must remain a shared SaaS platform
 
 
 Ingredient-level costing and inventory movements remain outside the current MVP scope. The menu/recipe scope must be finalized before implementation; it must not be interpreted as a requirement for advanced inventory management.
-7. Priority Definitions
+
+## 7. Priority Definitions
 - P0 — Essential: Required for the MVP to be considered operational.
 - P1 — Important: Strongly recommended for the first commercial release, but can be delivered after core workflows.
 - P2 — Future: Not required for the MVP.
 Priority indicates business importance, not implementation status. A P0 feature may still be pending.
-8. MVP Acceptance Criteria
+
+## 8. MVP Acceptance Criteria
 The MVP will be considered ready for pilot validation only when all applicable criteria below have been implemented and verified:
 #	Acceptance criterion	Current status
 1	A company can register and configure its tenant.	Partially met: tenant and membership foundations exist; complete company configuration remains pending.
@@ -310,9 +345,9 @@ The MVP will be considered ready for pilot validation only when all applicable c
 6	A manager can create and revise a quotation.	Partially met: creation and draft updates exist; formal version management is pending.
 7	A quotation PDF can be generated using company branding.	Pending.
 8	An approved quotation can become an event.	Pending.
-9	Fixed employees and freelancers can be assigned to events.	Pending.
-10	Payment installments can be configured and tracked.	Pending.
-11	Actual event expenses can be recorded.	Pending.
+9	Fixed employees and freelancers can be assigned to events.	Backend implemented; tenant-facing interface and complete operational validation pending.
+10	Payment installments can be configured and tracked.	Backend implemented; frontend and complete end-to-end financial validation pending.
+11	Actual event expenses can be recorded.	Pending — Expenses module not started.
 12	Basic financial indicators can be displayed.	Pending.
 13	Important operations are recorded in the audit history.	Pending: no dedicated audit-history module exists yet.
 14	The interface supports Portuguese, Spanish and English.	Pending.
@@ -321,7 +356,8 @@ The MVP will be considered ready for pilot validation only when all applicable c
 
 
 The MVP must not be declared ready for pilot validation until the remaining P0 acceptance criteria have been completed or explicitly re-scoped and approved.
-9. Pilot Validation
+
+## 9. Pilot Validation
 Implementation status: Not started
 
 The first pilot should involve a real catering company operating in Spain.
@@ -337,7 +373,8 @@ The pilot should validate:
 - Actual expense recording.
 - Financial result visibility.
 Feedback from the pilot will determine the next development priorities. Pilot validation should begin only after the critical end-to-end workflows and production safeguards are ready.
-10. Future Development
+
+## 10. Future Development
 After MVP validation, potential improvements include:
 - Customer self-service portal.
 - Digital quotation approval.
@@ -350,7 +387,8 @@ After MVP validation, potential improvements include:
 - Subscription management and automated SaaS billing.
 - Advanced employee scheduling.
 Future features must be evaluated against feedback from real catering operations and must not delay completion of the core MVP workflows.
-11. Current Implementation Snapshot
+
+## 11. Current Implementation Snapshot
 As of November 20, 2026, the following backend capabilities have been implemented and have dedicated automated tests:
 Area	Implemented capabilities	Remaining work
 Authentication and authorization	Authentication foundations, tenant context, RBAC and permission enforcement	Complete account lifecycle, invitations, recovery and production hardening
@@ -366,7 +404,8 @@ Frontend and deployment	Not established as complete by the current backend imple
 
 
 The backend has an established automated test suite covering the implemented modules. The full suite must be rerun after subsequent changes, and frontend, end-to-end and production acceptance tests remain future work.
-12. Pilot Readiness Principles
+
+## 12. Pilot Readiness Principles
 Before pilot deployment, CaterFlow must demonstrate the complete workflow from customer and catalog setup through quotation, approval, event execution and financial tracking.
 
 The following principles apply:

@@ -47,72 +47,95 @@ A successfully authenticated user must not automatically receive access to every
 
 Authorization must be evaluated independently for each protected operation.
 
+
 ## 3. Authentication Strategy
 
-CaterFlow will initially use an email-and-password authentication mechanism with JWT-based access tokens.
+CaterFlow uses email-and-password authentication with JWT-based access tokens and persisted refresh-token management.
 
-The architecture should support future authentication methods without requiring major changes to the business modules.
+User identity is global to the platform. A user has one account and one password, which can be used to access every tenant for which the user has a membership.
 
-Potential future extensions include:
+The authentication architecture separates two access contexts:
 
-- Google authentication.
-- Microsoft authentication.
-- Multi-factor authentication.
-- Enterprise Single Sign-On (SSO).
+- Tenant authentication: for users accessing a catering company's operational application.
+- Platform authentication: for administrators managing the CaterFlow SaaS platform itself.
 
-These extensions are not part of the initial MVP.
+These contexts are independent. Platform administration does not automatically grant access to tenant business data.
 
 ### 3.1 Core Components
 
-The authentication system will include:
+The authentication system includes:
 
-- User accounts.
+- Global user accounts.
 - Password hashing and verification.
+- Tenant memberships.
+- Platform administrator records.
 - Access tokens.
 - Refresh tokens.
 - Session management.
-- Password recovery.
-- Account status management.
-- Tenant membership integration.
-- Role-based access control.
+- Tenant-scoped role-based access control.
+- Platform-level authorization.
+- Account activation and deactivation.
+- Tenant activation and suspension.
 
-## 4. User Accounts
+Password recovery, email verification, invitations, and multi-factor authentication remain future capabilities.
 
-A user account represents an individual who can authenticate with CaterFlow.
+### 3.2 Authentication Contexts
 
-The user identity is global to the platform and is independent of tenant-specific business data.
+Tenant authentication and platform authentication use separate login operations.
 
-### 4.1 User Attributes
+Tenant authentication:
+- `POST /api/v1/auth/login`
+- Requires email, password, and tenant identifier.
+- Validates the user's global account.
+- Validates the selected tenant and membership.
+- Resolves tenant-specific authorization context.
 
-The initial user model should include:
+Platform authentication:
+- `POST /api/v1/auth/platform/login`
+- Requires email and password.
+- Validates the user's global account.
+- Requires an active Platform Administrator record.
+- Does not require a tenant membership.
 
-| Field | Description |
-|---|---|
-| id | Unique user identifier |
-| email | User's email address |
-| password_hash | Secure password hash |
-| full_name | User's display name |
-| is_active | Whether the account is active |
-| email_verified_at | Email verification timestamp |
-| last_login_at | Last successful login |
-| created_at | Account creation timestamp |
-| updated_at | Last update timestamp |
+The backend exposes the corresponding session and lifecycle operations:
 
-Additional fields may be introduced when required.
+- `GET /api/v1/auth/platform/me`
+- `POST /api/v1/auth/refresh`
+- `POST /api/v1/auth/logout`
 
-### 4.2 Email Address
+Platform and tenant protected endpoints must validate the appropriate authentication context. A token or session from one context must not be accepted as authorization for the other context.
 
-Email addresses will initially serve as the user's login identifier.
 
-The system must:
 
-- Normalize email addresses consistently.
-- Enforce global uniqueness.
-- Validate email format.
-- Avoid exposing whether an account exists through password recovery responses.
-- Require verification before enabling sensitive account operations, according to the final onboarding policy.
+### 4.3 Global User Identity
 
-The exact verification requirements must be finalized before public registration is released.
+A User represents a global platform identity, independent of any specific tenant.
+
+The same user account can belong to multiple tenants through separate Membership records.
+
+The user has one global email address and one global password. Tenant memberships do not create separate credentials.
+
+Global user attributes and account status are managed independently of tenant-specific roles and permissions.
+
+### 4.4 Platform Administrator
+
+Platform administration is represented separately from tenant membership.
+
+A Platform Administrator record associates a global User with platform-level administrative privileges.
+
+The current implementation uses a revocation timestamp (`revoked_at`) to determine whether the Platform Administrator privilege is active.
+
+Important rules:
+
+- A Platform Administrator does not automatically receive access to any tenant.
+- A Platform Administrator may have memberships in one or more tenants.
+- A Platform Administrator may exist without any tenant memberships.
+- Platform Administrator privileges and tenant roles are independent.
+- Revoking Platform Administrator privileges does not automatically remove tenant memberships.
+- Deactivating a global User prevents authentication and access regardless of their Platform Administrator record or memberships.
+
+A user without Platform Administrator privileges must have at least one tenant membership to retain access to CaterFlow.
+
 
 ## 5. Password Security
 
@@ -155,43 +178,53 @@ Passwords must never appear in:
 - URLs.
 - API responses.
 
+
 ## 6. Login Flow
 
-The login process should follow this sequence:
+CaterFlow provides separate authentication flows for tenant users and Platform Administrators.
 
-1. User submits email and password.
+### 6.1 Tenant Login
+
+1. User submits email, password, and tenant identifier.
 2. Backend validates the request.
-3. Backend retrieves the user account.
+3. Backend retrieves the global user account.
 4. Backend verifies the password hash.
-5. Backend checks whether the account is active.
-6. Backend verifies any required account restrictions.
-7. Backend creates an authenticated session.
-8. Backend issues an access token and refresh token.
-9. Frontend receives the authentication result.
-10. User selects an active tenant when necessary.
+5. Backend checks whether the user account is active.
+6. Backend validates that the selected tenant exists and is active.
+7. Backend validates the user's membership in that tenant.
+8. Backend resolves the tenant authorization context.
+9. Backend creates the authenticated session.
+10. Backend issues access and refresh tokens.
+
+A user must have a valid membership in the selected tenant.
+
+### 6.2 Platform Administrator Login
+
+1. Administrator submits email and password.
+2. Backend validates the request.
+3. Backend retrieves the global user account.
+4. Backend verifies the password hash.
+5. Backend checks whether the user account is active.
+6. Backend verifies the existence of an active Platform Administrator record.
+7. Backend creates a platform-level authenticated session.
+8. Backend issues access and refresh tokens.
+
+Platform login does not require tenant membership.
+
+Platform authentication must not create implicit tenant access.
+
+### 6.3 Account and Tenant Restrictions
+
+Authentication must be rejected when:
+
+- The global user account is inactive.
+- The supplied credentials are invalid.
+- The selected tenant is suspended or otherwise unavailable.
+- The user does not have a membership in the selected tenant.
+- The user does not have an active Platform Administrator record when attempting platform login.
 
 Invalid credentials must produce a generic authentication error.
 
-The application must not reveal whether the email address exists or whether the password alone was incorrect.
-
-### 6.1 Login Flow Diagram
-
-```mermaid
-flowchart TD
-    A[User submits credentials] --> B[Validate request]
-    B --> C[Find user account]
-    C --> D[Verify password]
-    D --> E{Credentials valid?}
-    E -->|No| F[Return generic error]
-    E -->|Yes| G{Account active?}
-    G -->|No| F
-    G -->|Yes| H[Create session]
-    H --> I[Issue access and refresh tokens]
-    I --> J[Authenticate user]
-    J --> K[Select active tenant]
-    K --> L[Validate tenant membership]
-    L --> M[Access authorized resources]
-```
 
 ## 7. JWT Access Tokens
 
@@ -455,30 +488,88 @@ The system should protect critical ownership operations, including:
 
 Such operations should require additional authorization and audit logging.
 
+
 ## 14. Tenant Membership Authorization
 
-A user can only access tenant resources when an active membership exists.
+A user can access tenant resources only when a valid membership exists between the user and the selected tenant.
 
-The authorization process must validate:
+The authorization process validates:
 
 1. User identity.
-2. Tenant membership.
-3. Membership status.
-4. Assigned role.
-5. Required permission.
-6. Resource ownership.
+2. User account status.
+3. Tenant status.
+4. Tenant membership.
+5. Assigned tenant roles.
+6. Required permission.
+7. Resource ownership.
 
-Tenant membership and account status are independent.
+A user may belong to multiple tenants and may have different roles and permissions in each tenant.
 
-For example:
+Memberships are tenant-scoped associations. Removing a membership removes that user's association with the corresponding tenant without deleting the global user account or unrelated memberships.
 
-- A user account may be active while one tenant membership is inactive.
-- A user may belong to two tenants with different roles.
-- Revoking one membership must not automatically revoke unrelated memberships.
+The current Membership model does not use an independent `is_active` flag. Membership removal is handled through the membership lifecycle and association records.
 
-The exact behavior of invitations, pending memberships, and membership removal will be defined during implementation.
+Tenant role assignments are managed within the corresponding tenant authorization context.
 
-## 15. API Security Requirements
+Platform Administrators can manage global users and their tenant associations through platform administration endpoints. Tenant administrators remain restricted to their own tenant and the permissions assigned to them.
+
+A Platform Administrator record does not replace a tenant membership and does not grant implicit access to tenant resources.
+
+## 15. Platform Administration and User Lifecycle
+
+Platform administration is a separate authorization domain from tenant-level RBAC.
+
+The Platform Administrator is responsible for managing the SaaS platform, including tenant accounts and global user identities.
+
+### 15.1 Platform User Management
+
+The platform administration API supports:
+
+- Listing global users.
+- Retrieving individual users.
+- Creating global user accounts.
+- Updating global user identity information.
+- Enabling or revoking Platform Administrator privileges.
+- Managing tenant memberships.
+- Activating global user accounts.
+- Deactivating global user accounts.
+
+A user has one global password across all tenant memberships.
+
+The platform user management interface can associate a user with multiple tenants. Invitations and self-service membership acceptance are not part of the current MVP.
+
+### 15.2 Platform Administrator Protection
+
+The backend must prevent:
+
+- Removing the last active Platform Administrator privilege.
+- Deactivating the last active Platform Administrator account.
+- Revoking the current administrator's own platform access through protected self-management operations.
+
+### 15.3 Global User Deactivation
+
+User deactivation is a global operation.
+
+When a user is deactivated:
+
+- Tenant authentication is blocked.
+- Platform authentication is blocked.
+- Refresh tokens are revoked.
+- Existing tenant memberships are retained.
+- Platform Administrator records are not automatically deleted.
+
+Reactivation restores the ability to authenticate, subject to the user's remaining memberships and privileges.
+
+### 15.4 Tenant Administration
+
+Platform Administrators can create, list, retrieve, update, suspend, and reactivate tenant accounts.
+
+Suspended tenants cannot be used for normal tenant authentication or protected tenant access.
+
+Tenant suspension does not delete tenant data or remove its users and memberships.
+
+
+## 16. API Security Requirements
 
 All protected API endpoints must enforce authentication and authorization.
 
@@ -496,7 +587,7 @@ The backend must:
 
 Sensitive operations should receive additional authorization checks where appropriate.
 
-## 16. Frontend Authentication Responsibilities
+## 17. Frontend Authentication Responsibilities
 
 The frontend is responsible for providing a secure and understandable authentication experience.
 
@@ -516,7 +607,7 @@ Frontend route protection improves usability but does not replace backend author
 
 The backend must remain secure even if a user modifies frontend code or sends API requests directly.
 
-### 16.1 Token Storage
+### 17.1 Token Storage
 
 The final token storage approach must be selected before implementation.
 
@@ -531,7 +622,7 @@ Persistent browser storage such as `localStorage` should not be used for long-li
 
 Cookie domain, CORS, CSRF, and frontend/backend deployment arrangements must be considered together.
 
-## 17. Brute Force and Abuse Protection
+## 18. Brute Force and Abuse Protection
 
 Authentication endpoints must include abuse protection.
 
@@ -546,7 +637,7 @@ Recommended controls:
 
 Account lockout policies must be designed carefully to avoid allowing attackers to intentionally deny service to legitimate users.
 
-## 18. Audit Logging
+## 19. Audit Logging
 
 Security-relevant authentication events must be recorded.
 
@@ -568,11 +659,11 @@ Audit records should include relevant identifiers and timestamps without storing
 
 Audit access must be restricted according to the security model.
 
-## 19. Testing Requirements
+## 20. Testing Requirements
 
 Authentication and authorization must have dedicated automated tests.
 
-### 19.1 Authentication Tests
+### 20.1 Authentication Tests
 
 - Valid login succeeds.
 - Invalid credentials are rejected.
@@ -585,7 +676,7 @@ Authentication and authorization must have dedicated automated tests.
 - Password recovery tokens are single-use.
 - Passwords are never returned in API responses.
 
-### 19.2 Authorization Tests
+### 20.2 Authorization Tests
 
 - Users without membership cannot access tenant resources.
 - Inactive memberships cannot access tenant resources.
@@ -595,7 +686,7 @@ Authentication and authorization must have dedicated automated tests.
 - Ownership restrictions are enforced.
 - Direct API requests cannot bypass frontend permission restrictions.
 
-### 19.3 Security Tests
+### 20.3 Security Tests
 
 - Login rate limiting works.
 - Recovery responses do not reveal account existence.
@@ -604,7 +695,7 @@ Authentication and authorization must have dedicated automated tests.
 - CSRF protections work when required.
 - Session revocation behaves consistently.
 
-## 20. Open Decisions
+## 21. Open Decisions
 
 The following decisions must be finalized before production implementation:
 
@@ -624,7 +715,7 @@ The following decisions must be finalized before production implementation:
 | Session management interface | Open |
 | Account deletion and retention behavior | Open |
 
-## 21. Architectural Principles
+## 22. Architectural Principles
 
 The following principles are mandatory:
 

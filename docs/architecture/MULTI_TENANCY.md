@@ -50,54 +50,68 @@ Separate databases or schemas per tenant are not part of the MVP.
 
 They may be considered in the future if specific customers require stronger infrastructure isolation, regulatory requirements, or dedicated environments.
 
+
 ## 3. Core Concepts
 
-The system must distinguish between users, tenants, and tenant memberships.
+The system distinguishes between Users, Tenants, Memberships, and Platform Administrators.
 
 ### 3.1 Tenant
 
-A tenant represents an independent catering company registered on CaterFlow.
+A Tenant represents an independent catering company registered on CaterFlow.
 
-Each tenant has its own:
+Each tenant owns its business data, including:
 
-- Company profile.
-- Logo and branding.
-- Business contact information.
-- Tax identification information.
-- Employees and collaborators.
-- Customers.
-- Catalog and pricing configuration.
-- Quotations and events.
-- Payments and expenses.
-- Business settings.
-- Language and timezone preferences.
+- Clients.
+- Employees and workforce records.
+- Products and services.
+- Product categories.
+- Quotes and quote items.
+- Events.
+- Future payment and expense records.
+- Company-specific configuration when implemented.
 
 A tenant is the primary ownership boundary for business data.
 
 ### 3.2 User
 
-A user represents an individual with credentials to access CaterFlow.
+A User represents a global identity within the CaterFlow platform.
 
-Users are platform-level identities and are not automatically associated with a specific company.
+Users are independent of tenant-specific business data.
 
-A user must have an active membership in a tenant to access its business data.
+A global user account contains one email address and one password. The same credentials are used when accessing different tenant memberships.
+
+A user account may be associated with multiple tenants.
 
 ### 3.3 Tenant Membership
 
-A tenant membership establishes the relationship between a user and a company.
+A Membership establishes the relationship between a global User and a Tenant.
 
-It determines:
+The membership provides the basis for tenant access and tenant-specific role assignments.
 
-- Which tenant the user can access.
-- The user's role within that tenant.
-- Whether the membership is active.
-- Which permissions are available.
+A user may have multiple memberships, each associated with a different tenant.
 
-**Recommended approach:** The data model should support one user belonging to multiple tenants, even if the first version of the interface primarily supports one company per user.
+The current implementation does not use an independent active/inactive flag on Membership. The existence of the membership association determines whether the user is associated with that tenant.
 
-This allows future scenarios such as consultants, accountants, external managers, or users working for multiple catering companies.
+Removing a membership does not delete the global user or unrelated memberships.
 
-A user must explicitly select an active tenant when multiple memberships are available.
+### 3.4 Platform Administrator
+
+A Platform Administrator is a global administrative privilege associated with a User.
+
+Platform administration is independent of tenant membership.
+
+A Platform Administrator may:
+
+- Manage tenant accounts.
+- Create and manage global user accounts.
+- Assign and remove tenant memberships.
+- Grant or revoke Platform Administrator privileges.
+- Activate and deactivate global users.
+- Suspend and reactivate tenants.
+
+Platform Administrator privileges do not automatically grant access to tenant business data.
+
+A Platform Administrator must also have a valid tenant membership to access a tenant's operational resources.
 
 ## 4. Data Ownership
 
@@ -127,21 +141,24 @@ The following entities must belong to a tenant:
 
 All tenant-owned records must include a non-null `tenant_id`.
 
+
 ### 4.2 Platform-Level Data
 
-Some information may be shared across the platform rather than owned by an individual tenant.
+The following data belongs to the platform rather than to an individual tenant:
 
-Examples:
+| Entity | Ownership |
+|---|---|
+| Users | Platform-level |
+| Tenants | Platform-level |
+| Platform Administrators | Platform-level |
+| Permissions | Platform-level definitions |
+| Refresh tokens | User-associated platform records |
 
-- Supported languages.
-- Application-wide configuration.
-- Platform feature definitions.
-- Subscription plan definitions.
-- Public system metadata.
+These records support platform authentication, tenant administration, global user management, and authorization.
 
-Platform-level records must not be confused with tenant-owned business records.
+Memberships, roles, membership-role assignments, and role-permission assignments remain tenant-scoped according to their respective models.
 
-A tenant must not be able to modify global platform configuration through ordinary tenant permissions.
+Platform-level access must not bypass tenant authorization or tenant data isolation.
 
 ## 5. Tenant Context Resolution
 
@@ -408,49 +425,109 @@ Platform-level analytics may aggregate information across tenants only through e
 
 Tenant users must never receive cross-tenant aggregated information that exposes another company's business data.
 
+
 ## 12. User Roles and Administrative Access
 
-Tenant administration and platform administration must be treated as separate security domains.
+CaterFlow separates platform-level administration from tenant-level administration.
+
+These are distinct authorization domains and must not be treated as interchangeable roles.
 
 ### 12.1 Tenant Administrator
 
-A tenant administrator can manage their own company's configuration and users according to the permission model.
+A tenant administrator manages users, roles, permissions, and company operations within their own tenant, according to the permissions assigned to them.
 
-They cannot access another tenant's information.
+Tenant administrators:
+
+- Can manage authorized users within their tenant.
+- Can assign tenant roles where permitted.
+- Can manage tenant-specific business information.
+- Cannot access another tenant's data.
+- Cannot modify global user identity information.
+- Cannot manage memberships belonging to other tenants.
+- Cannot grant or revoke Platform Administrator privileges.
+
+All operations must be validated against the active tenant context and required permission codes.
 
 ### 12.2 Tenant Staff
 
-Employees and collaborators receive permissions according to their assigned roles.
+Employees and collaborators receive access according to their assigned tenant roles and permissions.
 
-Their access must remain limited to their tenant and authorized operations.
+Their access remains limited to the tenant and operations for which they are authorized.
 
 ### 12.3 Platform Administrator
 
-A platform administrator is responsible for operating CaterFlow itself.
+A Platform Administrator operates the CaterFlow SaaS platform itself.
 
-Platform administration must not automatically grant unrestricted access to tenant business data.
+Platform administration includes:
 
-Any exceptional support access must follow a controlled and auditable process.
+- Tenant creation and management.
+- Tenant suspension and reactivation.
+- Global user creation and management.
+- Global user activation and deactivation.
+- Tenant membership assignment and removal.
+- Platform Administrator privilege management.
 
-The exact support-access workflow remains an open decision.
+Platform Administrators are authenticated through a separate platform login flow and protected by platform-specific backend authorization dependencies.
+
+Platform administration does not automatically grant access to tenant business information.
+
+A Platform Administrator must have an explicit tenant membership to access that tenant's operational resources.
+
+### 12.4 Global User and Membership Lifecycle
+
+A global User can belong to multiple tenants through Membership records.
+
+The user's email and password are global and shared across all memberships.
+
+The following rules apply:
+
+- A non-Platform Administrator must have at least one tenant membership.
+- A Platform Administrator may exist without tenant memberships.
+- A Platform Administrator may also have tenant memberships.
+- Removing one membership does not remove other memberships.
+- Revoking Platform Administrator privileges does not remove tenant memberships.
+- Deactivating a User blocks authentication globally and revokes refresh tokens.
+- Tenant administrators cannot modify global identity or memberships outside their own tenant.
+
+### 12.5 Ownership and Administrative Safeguards
+
+The backend protects critical access operations.
+
+It must prevent:
+
+- Removing the last active Owner from a tenant.
+- Deactivating the last active Owner of a tenant.
+- Deactivating the last active Platform Administrator.
+- Removing the current Platform Administrator's own platform access through protected self-management operations.
+
+These rules must be enforced by backend services and covered by automated tests.
+
 
 ## 13. Tenant Lifecycle
 
-Tenants should have a lifecycle independent of individual user accounts.
+Tenants have a lifecycle independent of global user accounts and memberships.
 
-The initial lifecycle may include:
+The current implementation supports the following operational states:
 
-| Status | Description |
-|---|---|
-| Active | Tenant can use the platform normally |
-| Suspended | Access to selected platform functions is restricted |
-| Archived | Tenant is no longer operational but its records are retained according to applicable policies |
+| Status | Description | Implementation |
+|---|---|---|
+| Active | Tenant can use the platform normally | Implemented |
+| Suspended | Tenant access is blocked | Implemented |
+| Archived | Tenant is retained but no longer operational | Future capability |
 
-The exact behavior of suspended and archived tenants must be defined before implementation.
+Platform Administrators can create tenants, retrieve and update tenant information, suspend tenants, and reactivate suspended tenants.
 
-Tenant suspension must not automatically delete financial records, audit history, quotations, or event data.
+Suspension prevents normal tenant authentication and protected tenant access.
 
-Tenant deletion must follow a documented process that considers legal retention obligations, contractual requirements, backups, and privacy obligations.
+Tenant suspension does not:
+
+- Delete tenant data.
+- Delete global users.
+- Remove tenant memberships.
+- Delete tenant roles or permissions.
+- Automatically deactivate associated global users.
+
+Tenant archival and permanent deletion require separate retention, legal, and data lifecycle policies and are not part of the current implementation.
 
 ## 14. Tenant Registration and Initialization
 
@@ -570,20 +647,27 @@ The application should avoid unnecessary dependencies on the shared-schema imple
 
 However, the MVP must prioritize a secure and maintainable shared-schema implementation rather than prematurely supporting multiple isolation strategies.
 
+
 ## 19. Open Decisions
 
-The following decisions must be finalized before or during implementation:
+The following decisions remain open or deferred:
 
 | Decision | Status |
 |---|---|
-| Support users belonging to multiple tenants | Recommended |
-| Tenant selection mechanism in the API | Open |
-| PostgreSQL RLS adoption | Open |
+| Support users belonging to multiple tenants | Implemented |
+| Global user identity and shared credentials | Implemented |
+| Separate platform and tenant authentication contexts | Implemented |
+| Platform Administrator privilege management | Implemented |
+| Platform tenant management | Implemented |
+| Tenant membership assignment and removal by Platform Admin | Implemented |
+| Tenant selection and switching experience | Further frontend work required |
+| PostgreSQL RLS adoption | Deferred |
 | Platform support access workflow | Open |
-| Suspended tenant behavior | Open |
-| Tenant deletion and retention workflow | Open |
-| User invitation and membership lifecycle | Open |
+| Tenant archival and permanent deletion | Open |
+| User invitation and self-service membership lifecycle | Deferred |
 | Tenant-specific subscription enforcement | Future consideration |
+
+PostgreSQL RLS must remain deferred unless explicitly reconsidered.
 
 These decisions should be documented through Architecture Decision Records when finalized.
 

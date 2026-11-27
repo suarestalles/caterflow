@@ -4,12 +4,18 @@ Document: Documentation Index
 Version: 0.2
 Status: Implementation-aligned documentation index
 Last updated: November 2026
+
 Welcome to the technical and product documentation for CaterFlow.
 
-CaterFlow is a planned cloud-based, multi-tenant SaaS platform for catering companies. Its intended scope includes customer and catalog management, quotations, events, workforce, payments, expenses, and financial reporting.
+CaterFlow is a cloud-based, multi-tenant SaaS platform for catering companies.
+
+The platform is being developed as a modular monolith, with a FastAPI backend, a Next.js frontend and PostgreSQL persistence.
+
+Its product scope covers platform administration, tenant management, customers, products and services, quotations, events, workforce, payments, expenses and financial reporting.
 
 This documentation describes both the approved product direction and the current implementation. A feature described as planned or specified must not be assumed to be implemented. The implementation status in the relevant documents is authoritative for that distinction.
-1. Documentation Structure
+
+## 1. Documentation Structure
 docs/
 ├── README.md
 │
@@ -36,7 +42,8 @@ docs/
 └── adr/
     └── README.md
 The tree represents the documentation structure. Individual documents may be expanded as the project evolves.
-2. Product Documentation
+
+## 2. Product Documentation
 Product documents describe what CaterFlow is intended to do, who it serves, and the business rules that govern its workflows.
 Document	Description
 [PRD.md](product/PRD.md)	Product vision, objectives, target users, requirements, constraints, and success metrics.
@@ -92,7 +99,8 @@ ADRs capture significant technical decisions and their context, including:
 - Consequences, limitations, and trade-offs.
 - Whether a decision supersedes an earlier ADR.
 Create an ADR when a significant architectural decision is made or an existing decision is intentionally changed. See [README.md](adr/README.md) for the process and template.
-6. Project Baseline
+
+## 6. Project Baseline
 The following table summarizes the current technical direction. It does not imply that every listed product capability or infrastructure component has already been delivered.
 Area	Current baseline
 Product model	Multi-tenant SaaS
@@ -121,13 +129,19 @@ Important architecture status
 - PostgreSQL Row-Level Security (RLS) is deferred. Current tenant isolation is enforced at the application/backend level; RLS must not be described as enabled.
 - Production object storage, deployment provider, and production infrastructure remain subject to the deployment plan.
 - The application is being developed as a modular monolith. Microservices are not part of the initial architecture.
-- The backend currently includes authentication/tenant membership/RBAC foundations and the Clients, Events, Products, Product Categories, and Quotes modules. See the Roadmap and the relevant module documentation for precise scope and status.
-7. Documentation Standards
-7.1 Language
+- The backend currently includes authentication, global user identity, tenant membership, RBAC, platform administration, Clients, Events, Products and Product Categories, Quotes, Workforce and Payments.
+- Expenses and financial reporting remain pending.
+- The frontend includes the Platform Admin application. The tenant-facing business application is still under development.
+
+## 7. Documentation Standards
+
+### 7.1 Language
 Technical documentation must be written in English to support international collaboration. The application is intended to support Portuguese, Spanish, and English.
-7.2 Consistency
+
+### 7.2 Consistency
 Product, architecture, and development documents must remain consistent. When a requirement or implementation decision changes, review all documents affected by that change.
-7.3 Versioning and status
+
+### 7.3 Versioning and status
 Documents should identify their title, project, version, status, and last-updated date where appropriate. Version numbers describe document revisions; they do not indicate implementation completion.
 
 Use explicit status language such as:
@@ -136,9 +150,11 @@ Use explicit status language such as:
 - Planned: intended but not yet implemented.
 - Open decision: requires a decision before implementation or release.
 - Deferred: intentionally postponed; do not implement unless the decision is revisited.
-7.4 Open decisions and assumptions
+
+### 7.4 Open decisions and assumptions
 Unresolved technical or business decisions must be identified as open. Assumptions must not silently become implementation requirements.
-7.5 Updates
+
+### 7.5 Updates
 Documentation must be reviewed when:
 - Requirements or acceptance criteria change.
 - A feature is introduced, modified, or deferred.
@@ -147,7 +163,8 @@ Documentation must be reviewed when:
 - Development or testing standards evolve.
 - Deployment or operational procedures change.
 Documentation should describe the actual approved system and clearly distinguish it from the intended future design.
-8. Implementation Reference
+
+## 8. Implementation Reference
 Use the following documents as the starting point when implementing a feature. Consult additional documents whenever the change crosses module, security, data, or operational boundaries.
 Implementation area	Primary references
 User registration and login	[AUTHENTICATION.md](architecture/AUTHENTICATION.md), [MULTI_TENANCY.md](architecture/MULTI_TENANCY.md)
@@ -164,8 +181,7 @@ API and backend implementation	[ARCHITECTURE.md](architecture/ARCHITECTURE.md), 
 Automated tests	[TESTING.md](development/TESTING.md)
 Production release	[SECURITY.md](architecture/SECURITY.md), [DEPLOYMENT.md](development/DEPLOYMENT.md)
 
-
-9. Documentation Governance
+## 9. Documentation Governance
 The documentation is the shared reference for product and implementation decisions.
 1. Product requirements and acceptance criteria should be clarified before implementing a feature.
 2. Business rules must be explicit before related financial or operational logic is implemented.
@@ -175,20 +191,42 @@ The documentation is the shared reference for product and implementation decisio
 6. Code must not silently contradict an approved decision. If implementation reveals that a decision must change, update the relevant documentation and record the decision where appropriate.
 7. Documentation updates should accompany the code changes they describe.
 8. Tests must validate critical business rules and security boundaries; documentation alone is not evidence that a feature is implemented.
-10. Current Documentation and Implementation Status
-The documentation set contains product, architecture, and development specifications. The implementation is progressing incrementally; the presence of a specification does not mean the corresponding module is complete.
+
+## 10. Current Documentation and Implementation Status
+
+The documentation set contains product, architecture, and development specifications. The presence of a specification does not mean that the corresponding module is complete.
 
 The current backend baseline includes:
-- Authentication, tenant membership, and permission-based RBAC foundations.
-- Tenant-scoped persistence and application-level tenant isolation.
+- Global user identity and authentication.
+- Separate tenant and Platform Admin authentication contexts.
+- Tenant membership and permission-based RBAC.
+- Platform Admin tenant management.
+- Platform Admin global user and membership management.
+- Application-level tenant isolation.
 - Clients management.
-- Events management and status transitions.
+- Events management.
 - Products and product categories.
-- Quotes and quote items, including optional product catalog links and commercial snapshots.
+- Quotes and quote items, including catalog references and commercial snapshots.
+- Workforce management.
+- Payment management.
 - Alembic-managed schema migrations.
 - A dedicated PostgreSQL test database and automated backend tests.
-The following capabilities remain future work or require further implementation before they can be considered delivered: full quotation versioning and approval workflow, conversion of approved quotes into events, PDF generation, payments, workforce management, expenses, reporting, production storage integration, and production deployment. Refer to [ROADMAP.md](development/ROADMAP.md), [MVP_SCOPE.md](product/MVP_SCOPE.md), and [USER_FLOWS.md](product/USER_FLOWS.md) for the current status and dependencies.
 
-The next development work should follow the roadmap and maintain consistency between code, tests, and documentation. A feature should be marked implemented only when its agreed scope is delivered and validated.
-11. Guiding Principle
+The frontend currently includes the authentication foundation and the Platform Admin application, including tenant and global user administration.
+
+The following capabilities remain future work or require further implementation:
+- Complete quotation approval, revision/versioning and event-conversion workflows.
+- Complete tenant-facing frontend interfaces.
+- Expenses management.
+- Operational and financial reporting.
+- Complete company configuration and branding.
+- Full localization and document generation.
+- Production storage integration.
+- Production deployment and initial business validation.
+
+Refer to ROADMAP.md, MVP_SCOPE.md and USER_FLOWS.md for the current status and dependencies.
+
+The next development work should follow the roadmap and maintain consistency between code, tests and documentation. A feature should be marked implemented only when its agreed scope is delivered and validated.
+
+## 11. Guiding Principle
 CaterFlow should be developed as a maintainable, secure, and scalable SaaS product. This documentation exists to reduce ambiguity, guide implementation, preserve technical decisions, and support future collaboration. It must evolve alongside the product and accurately distinguish current capabilities from future plans.

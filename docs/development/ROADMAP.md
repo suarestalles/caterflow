@@ -2,9 +2,10 @@ Development Roadmap
 Project: CaterFlow
 Document: Development Roadmap
 Version: 0.2
-Status: In development — backend core modules implemented; MVP incomplete
-Last updated: November 20, 2026
-1. Purpose
+Status: In development — core backend modules implemented; Expenses and remaining MVP workflows pending
+Last updated: November 27, 2026
+
+## 1. Purpose
 This document defines the implementation roadmap for CaterFlow.
 
 It organizes development into milestones with clear objectives, deliverables, dependencies, and completion criteria. It also records the verified implementation status so that the roadmap reflects the actual state of the repository rather than only the initial plan.
@@ -18,7 +19,8 @@ The roadmap aims to:
 - Prepare the platform for production deployment.
 - Keep planned functionality distinct from implemented functionality.
 A milestone must only be marked as completed after all its applicable acceptance criteria have been implemented and verified. Completing one module within a milestone does not automatically complete the entire milestone.
-2. Development Strategy
+
+## 2. Development Strategy
 CaterFlow is being developed incrementally using a modular monolith architecture.
 
 The implementation strategy follows these principles:
@@ -34,7 +36,8 @@ The implementation strategy follows these principles:
 10. Validate security and production readiness.
 11. Deploy and validate the MVP with an initial catering company.
 The application must remain usable and testable throughout development.
-2.1 Implementation status legend
+
+### 2.1 Implementation status legend
 Status	Meaning
 Completed	The scoped functionality has been implemented and its relevant tests have passed.
 Partially completed	Some functionality is implemented, but one or more planned deliverables or acceptance criteria remain pending.
@@ -43,12 +46,33 @@ To be verified	The roadmap does not have enough confirmed implementation evidenc
 
 
 The status applies to the milestone as a whole. Individual delivered components may be listed as completed inside a partially completed milestone.
-3. Current Development Status
-3.1 Overall status
-CaterFlow currently has a working backend foundation and several core commercial modules. Authentication, application-level tenant isolation, RBAC, clients, events, products and services, and quotations have been implemented to varying degrees.
 
-The current implementation is backend-focused. The complete frontend experience, end-to-end catering workflow, financial modules, production deployment, and initial business validation are not yet complete.
-3.2 Implemented components
+## 3. Current Development Status
+
+### 3.1 Overall status
+
+CaterFlow has a working backend foundation and several implemented business modules.
+
+The backend currently includes:
+- Authentication and global user identity.
+- Tenant membership and RBAC.
+- Platform Admin authentication and administration.
+- Clients.
+- Products and product categories.
+- Quotes.
+- Events.
+- Workforce.
+- Payments.
+
+The frontend foundation and Platform Admin application are implemented, including tenant and global user management.
+
+The tenant-facing frontend remains under development.
+
+The next backend objective is the Expenses module, followed by financial reconciliation and the completion of the commercial-to-operational workflow.
+
+The complete MVP workflow, reporting, production deployment and initial business validation are not yet complete.
+
+### 3.2 Implemented components
 Area	Current implementation	Status
 Backend foundation	FastAPI, SQLAlchemy 2.x, Pydantic, database session management, Alembic, and pytest setup	Completed for the current backend scope
 Authentication	User authentication, password hashing, access-token handling, and refresh-token infrastructure	Implemented; full identity roadmap remains partial
@@ -60,9 +84,14 @@ Products and services	Shared Product model differentiated by type, categories/su
 Quotes	Quote CRUD, sequential numbering per tenant, item management, totals, discounts, taxes, sending, and duplication	Implemented; full quotation lifecycle remains partial
 Product-to-quote integration	Optional product reference, unit and commercial snapshots, negotiated prices, tenant validation, and preservation during duplication	Completed for the implemented integration scope
 Automated tests	Repository, service, API, authorization, tenant-isolation, and integration tests for implemented backend modules	Implemented; full regression suite must continue to be run
+Platform Administration	Platform authentication, tenant CRUD and lifecycle management, global user management, Platform Admin privileges and membership administration	Implemented
+Workforce	Employee and freelancer management, event assignments and compensation-related functionality	Backend implemented
+Payments	Payment installments, payment registration, balance tracking and payment status handling	Backend implemented
+Expenses	Expense registration, categories, event association and financial validation	Not started
+Frontend Platform Admin	Protected platform routes, dashboard, tenant management and global user management	Implemented
+Tenant Frontend	Business application interfaces for tenant users	Under development
 
-
-3.3 Important architectural decisions
+### 3.3 Important architectural decisions
 The following decisions are part of the current implementation and must be respected by future work:
 - The application follows a modular monolith architecture.
 - Tenant isolation is enforced at the application/backend layer using TenantSession, tenant context, ORM filtering, and authorization checks.
@@ -78,24 +107,33 @@ The following decisions are part of the current implementation and must be respe
 - Product and quote data must remain tenant-scoped.
 - Alembic migrations are the mechanism for evolving development and production database schemas.
 - The current test database fixture uses an isolated database named caterflow_test. Any destructive test-database reset must retain the explicit database-name safety check. Migration-based test database setup remains a future improvement.
-3.4 Current next development focus
-The next implementation work should complete the commercial-to-operational workflow before starting the financial reporting layer.
+
+### 3.4 Current next development focus
+
+The next implementation work should complete the financial tracking foundation before moving into reporting.
 
 Recommended sequence:
-1. Complete the quotation lifecycle needed by operations, including the approved/rejected transition and the rules required before an event can be created from an approved quotation.
-2. Implement event creation/conversion from an approved quotation while preserving the approved commercial snapshot.
-3. Implement workforce records, event assignments, planned/actual hours, and compensation snapshots.
-4. Implement payments and expenses after the event and workforce cost model is established.
-Tenant configuration items from M2 that are required by these workflows (for example, business profile, currency, timezone, and relevant defaults) should be implemented when their concrete dependencies are reached. The remaining M2 scope must not be treated as completed merely because roles and memberships already exist.
-4. Milestone Overview
+
+1. Implement the Expenses backend module, including persistence, categories, event association, authorization and financial validation.
+2. Validate integration between Workforce, Payments and Expenses, especially historical compensation and prevention of duplicate workforce cost recognition.
+3. Complete the quotation approval and approved-quotation-to-event conversion workflows, preserving commercial snapshots and ensuring idempotency.
+4. Implement tenant-facing frontend interfaces for the completed backend modules.
+5. Implement operational and financial reporting using validated source records.
+6. Complete company settings, localization, document generation and production requirements.
+
+The backend module contracts should be kept stable and documented so frontend development can proceed in parallel when the relevant API scope is ready.
+
+Tenant configuration requirements must be introduced when concrete workflows depend on them, without treating the entire M2 milestone as complete.
+
+## 4. Milestone Overview
 Milestone	Name	Priority	Current status
 M0	Project Foundation	Critical	Partially completed — backend foundation implemented; frontend and full CI criteria remain to be verified
-M1	Authentication and Multi-Tenancy	Critical	Partially completed — authentication, tenant isolation, and current RBAC foundation implemented; remaining identity lifecycle criteria pending
+M1	Authentication and Multi-Tenancy	Critical	Partially completed — authentication, tenant isolation, RBAC, Platform Admin authentication and global user administration implemented; remaining identity lifecycle and tenant configuration requirements pending.
 M2	Tenant Configuration and Business Foundations	High	Partially completed — role and membership foundations exist; company and operational configuration remain pending
 M3	Customers and Catalog	High	Partially completed — Clients and Products/Services modules implemented; broader catalog/menu scope remains pending
 M4	Pricing and Quotations	Critical	Partially completed — quote management and catalog integration implemented; approval/versioning/documents/payment terms remain pending
-M5	Events and Workforce	Critical	Partially completed — Events module implemented; quote conversion and workforce management remain pending
-M6	Payments and Expenses	Critical	Not started
+M5	Events and Workforce	Critical	Partially completed — Events and Workforce backend modules implemented; quotation conversion and tenant-facing operational interfaces pending.
+M6	Payments and Expenses	Critical	Partially completed — Payments backend implemented; Expenses module not started.
 M7	Dashboard and Financial Reporting	High	Not started
 M8	Localization and Document Generation	High	Not started
 M9	Security, Quality, and Production Readiness	Critical	Partially completed — automated backend tests and tenant/RBAC controls exist; formal production-readiness work remains
@@ -103,7 +141,8 @@ M10	Cloud Deployment and Initial Validation	Critical	Not started
 
 
 The sequence may be adjusted when implementation reveals dependencies or risks that require a different order. Any change must be reflected in this roadmap.
-5. M0 — Project Foundation
+
+## 5. M0 — Project Foundation
 Objective: Establish the technical foundation and development environment.
 Current status: Partially completed.
 Scope
@@ -165,7 +204,8 @@ Acceptance Criteria
 - Automated tests execute successfully.
 - CI validates the initial project structure.
 Dependencies: None.
-6. M1 — Authentication and Multi-Tenancy
+
+## 6. M1 — Authentication and Multi-Tenancy
 Objective: Establish secure user identity, tenant membership, and data isolation.
 Current status: Partially completed.
 Scope
@@ -235,7 +275,8 @@ Acceptance Criteria
 - Cross-tenant access tests pass.
 - Revoked sessions cannot be reused.
 Dependencies: M0.
-7. M2 — Tenant Configuration and Business Foundations
+
+## 7. M2 — Tenant Configuration and Business Foundations
 Objective: Allow each catering company to configure its business environment.
 Current status: Partially completed.
 Scope
@@ -291,7 +332,8 @@ Acceptance Criteria
 - Relevant configuration changes are audited.
 - Default currency and timezone are applied consistently.
 Dependencies: M1.
-8. M3 — Customers and Catalog
+
+## 8. M3 — Customers and Catalog
 Objective: Implement the basic commercial data required to prepare catering quotations.
 Current status: Partially completed.
 Scope
@@ -358,7 +400,8 @@ Acceptance Criteria
 - Historical commercial records are not silently changed by catalog updates.
 Dependencies: M2.
 Implementation note: Core customer and product/service backend modules were implemented before all M2 configuration work was completed. The remaining M2 requirements remain open and are not implicitly considered satisfied by M3.
-9. M4 — Pricing and Quotations
+
+## 9. M4 — Pricing and Quotations
 Objective: Implement the commercial workflow from pricing configuration to quotation approval.
 Current status: Partially completed.
 Scope
@@ -441,7 +484,8 @@ Acceptance Criteria
 - Generated PDFs reflect the correct quotation version.
 - All critical financial calculations pass automated tests.
 Dependencies: M3.
-10. M5 — Events and Workforce
+
+## 10. M5 — Events and Workforce
 Objective: Convert approved quotations into operational events and manage the employees responsible for delivery.
 Current status: Partially completed.
 Scope
@@ -477,30 +521,33 @@ Operational management:
 - Event staffing overview.
 - Operational notes where appropriate.
 Implemented
+
 Events module:
-- Tenant-scoped event creation, listing, retrieval, and updating.
+- Tenant-scoped event creation, listing, retrieval and updating.
 - Required association with a client.
-- Optional event association in quotes.
 - Event date/time validation and start-before-end rule.
 - Positive guest-count validation.
-- Event status management using the implemented statuses: draft, confirmed, in_progress, completed, and cancelled.
-- Controlled status transitions and cancellation rules.
-- Independent event address, notes, and country field (default ES).
+- Event status management and controlled transitions.
+- Event cancellation workflow.
+- Independent event address, notes and country information.
 - Client/event tenant integrity through composite foreign-key constraints.
-- RBAC permissions and automated repository, service, and API tests.
+- RBAC permissions and automated repository, service and API tests.
+
+Workforce module:
+- Workforce management for fixed employees and freelancers.
+- Employee information and relevant compensation configuration.
+- Event workforce assignments.
+- Assignment-related compensation information.
+- Historical compensation preservation according to the implemented model.
+- Tenant-scoped authorization and automated tests.
+
 Pending
-- Event creation/conversion from an accepted quotation.
+- Event creation/conversion from an approved quotation.
 - Idempotency protection for quotation-to-event conversion.
 - Preservation of the approved quotation snapshot in the resulting event.
-- Any additional event statuses or transition rules required by the final operational workflow.
-- Employee and freelancer registration.
-- Employee roles and compensation configuration.
-- Event employee assignments.
-- Planned and actual hours.
-- Hourly and fixed event compensation.
-- Historical compensation snapshots.
-- Assignment history and staffing overview.
-- Event management and workforce interfaces.
+- Any additional event transition rules required by the final operational workflow.
+- Complete tenant-facing event and workforce interfaces.
+- Dedicated employee and freelancer access workflows.
 Deliverables
 - Events module completion.
 - Workforce module.
@@ -519,9 +566,11 @@ Acceptance Criteria
 - Event cancellation does not automatically delete financial records.
 Dependencies: M4.
 Implementation note: The standalone Events backend module is implemented, but the complete event-from-approved-quote workflow and workforce scope are not.
-11. M6 — Payments and Expenses
+
+## 11. M6 — Payments and Expenses
 Objective: Implement financial tracking and event cost management.
-Current status: Not started.
+
+Current status: Partially completed — Payments backend implemented; Expenses not started.
 Scope
 Payments:
 - Payment installment tracking.
@@ -538,7 +587,30 @@ Initial payment statuses:
 - Paid.
 - Overdue.
 - Cancelled.
+
+Implemented
+
+Payments module:
+- Payment-related persistence and business logic.
+- Payment installment management.
+- Payment registration.
+- Payment amount and outstanding balance tracking.
+- Payment status handling.
+- Tenant-scoped authorization.
+- Automated backend tests for implemented payment functionality.
+
+Pending
+
+Payments:
+- Complete tenant-facing payment management interface.
+- Integration with the final quotation approval and event-conversion workflow.
+- Complete financial reconciliation across payment and expense records.
+- Additional financial validation required by the final MVP workflow.
+
 Expenses:
+Implementation status: Not started.
+
+The Expenses module is the next backend implementation target.
 - Expense registration.
 - Event association.
 - Expense categories.
@@ -575,7 +647,8 @@ Acceptance Criteria
 - Event status and payment status remain independent.
 - Financial summaries reconcile with source records.
 Dependencies: M5.
-12. M7 — Dashboard and Financial Reporting
+
+## 12. M7 — Dashboard and Financial Reporting
 Objective: Provide an overview of business operations and financial performance.
 Current status: Not started.
 Scope
@@ -619,7 +692,8 @@ Acceptance Criteria
 - Filters return the correct tenant-scoped results.
 - Reporting respects user permissions.
 Dependencies: M6.
-13. M8 — Localization and Document Generation
+
+## 13. M8 — Localization and Document Generation
 Objective: Complete the multilingual experience and professional business documents.
 Current status: Not started.
 Scope
@@ -663,7 +737,8 @@ Acceptance Criteria
 - Private documents cannot be accessed by unauthorized tenants.
 - Storage works independently of the selected provider.
 Dependencies: M7, with localization foundations introduced earlier where necessary.
-14. M9 — Security, Quality, and Production Readiness
+
+## 14. M9 — Security, Quality, and Production Readiness
 Objective: Validate the complete application before production deployment.
 Current status: Partially completed.
 Scope
@@ -730,7 +805,8 @@ Acceptance Criteria
 - Monitoring and logging are operational.
 - Privacy and legal requirements have received appropriate review.
 Dependencies: M8, with security checks performed continuously throughout development.
-15. M10 — Cloud Deployment and Initial Validation
+
+## 15. M10 — Cloud Deployment and Initial Validation
 Objective: Deploy CaterFlow as a cloud-hosted SaaS and validate the MVP with an initial catering company.
 Current status: Not started.
 Scope
@@ -783,7 +859,8 @@ Acceptance Criteria
 - Backups and monitoring are operational.
 - Initial catering company can use the application for controlled validation.
 Dependencies: M9.
-16. MVP Release Definition
+
+## 16. MVP Release Definition
 The MVP is considered functionally complete when the following workflow works end to end:
 ```mermaid
 flowchart TD
@@ -814,7 +891,8 @@ Current MVP gaps
 - Localization, quotation documents, and production storage.
 - Production-readiness validation and deployment.
 - Initial real-business validation.
-17. Prioritization Strategy
+
+## 17. Prioritization Strategy
 Features must be prioritized according to:
 1. Security and data integrity.
 2. Dependencies between modules.
@@ -823,16 +901,22 @@ Features must be prioritized according to:
 5. Implementation complexity.
 6. Validation opportunities.
 A feature must not be prioritized only because it is visually attractive or easy to implement.
-17.1 Immediate implementation sequence
+
+### 17.1 Immediate implementation sequence
+
 Based on the current repository state, the recommended near-term sequence is:
-1. Complete the quotation lifecycle needed for approval and event conversion.
-2. Implement the approved-quotation-to-event workflow, including idempotency and commercial snapshot preservation.
-3. Implement workforce and event assignments, including historical compensation snapshots.
-4. Implement payment installments, payments, and expenses.
-5. Implement operational and financial reporting.
-6. Complete tenant settings, localization, document generation, and production requirements where they are dependencies for release.
-This execution sequence may bring forward selected M2 or M8 requirements when required by a concrete business workflow. It does not change the acceptance criteria of those milestones.
-18. Milestone Management
+
+1. Implement the Expenses backend module, including event association, categories, financial validation and tenant isolation.
+2. Validate the integration between Workforce, Payments and Expenses, especially historical compensation and prevention of duplicate cost recognition.
+3. Complete the quotation approval and event-conversion workflows, preserving approved commercial snapshots.
+4. Implement the tenant-facing frontend for the completed backend modules.
+5. Implement operational and financial reporting using the validated source records.
+6. Complete tenant settings, localization, document generation and production requirements.
+
+This sequence may be adjusted when implementation reveals concrete dependencies. Any change must be reflected in this roadmap.
+
+
+## 18. Milestone Management
 Each milestone must have:
 - Defined scope.
 - Clear dependencies.
@@ -846,7 +930,8 @@ Milestones may be divided into smaller implementation tasks.
 A milestone must not be considered complete simply because its main interface exists.
 
 Backend behavior, data integrity, permissions, tests, and relevant documentation must also be complete.
-18.1 Definition of Done
+
+### 18.1 Definition of Done
 A feature or milestone is considered complete only after all applicable stages have been verified:
 1. Implementation.
 2. Automated tests.
@@ -856,7 +941,8 @@ A feature or milestone is considered complete only after all applicable stages h
 6. Manual/API verification where applicable.
 7. Commit.
 A passing test suite is necessary but does not, by itself, prove that unimplemented scope or production acceptance criteria are complete.
-18.2 Documentation maintenance
+
+### 18.2 Documentation maintenance
 After completing a meaningful module or integration:
 - Update this roadmap with the actual implementation status.
 - Update MVP_SCOPE.md when delivered scope changes.
@@ -864,7 +950,8 @@ After completing a meaningful module or integration:
 - Update USER_FLOWS.md when a workflow becomes available or changes.
 - Update architecture/database documentation when models, relationships, or infrastructure decisions change.
 - Record notable delivered changes in the changelog, if maintained.
-19. Future Improvements After MVP
+
+## 19. Future Improvements After MVP
 The following capabilities are outside the initial MVP and may be evaluated later:
 - Customer portal.
 - Public catering marketplace.
@@ -880,7 +967,8 @@ The following capabilities are outside the initial MVP and may be evaluated late
 - Multi-currency financial reporting.
 - Additional third-party integrations.
 Future features must follow the same modular architecture and tenant-isolation requirements.
-20. Open Decisions
+
+## 20. Open Decisions
 Decision	Status
 Cloud hosting provider	To be selected
 Production database provider	To be selected
@@ -896,13 +984,16 @@ Final tenant configuration fields and defaults	To be validated against business 
 Final quote approval and revision rules	To be defined and implemented
 Workforce compensation rules	To be validated before implementation
 
-
-21. Final Principles
+## 21. Final Principles
 CaterFlow must be developed incrementally, validating each milestone before moving to the next.
 
 The priority is not to build every possible feature as quickly as possible, but to deliver a secure, reliable, and useful product that solves real catering business problems.
 
-The current implementation is a backend foundation with working commercial modules, not yet a complete production-ready MVP. The next major objective is to connect quotations to event operations and then implement workforce, payments, expenses, and reporting.
+The current implementation includes a functional backend foundation and completed backend modules for core commercial, operational and payment workflows.
+
+The next major objective is to implement Expenses, validate financial integration and complete the remaining quotation-to-event workflow.
+
+Tenant-facing frontend development should proceed alongside backend work whenever the relevant module contracts and API behavior are stable.
 
 The initial production release must focus on the complete commercial-to-operational-to-financial workflow.
 
